@@ -1,4 +1,4 @@
-package store
+package postgres
 
 var postgre = struct {
 	selectURL                string
