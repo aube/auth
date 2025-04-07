@@ -1,6 +1,7 @@
 package authserver
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/aube/gophermart/internal/auth/api"
@@ -17,7 +18,10 @@ import (
 // Start ...
 func Start() error {
 	config := NewConfig()
-	store, err := store.NewStore(config.DatabaseURL)
+
+	fmt.Println("config.DatabaseDSN", config.DatabaseDSN)
+
+	store, err := store.NewStore(config.DatabaseDSN)
 
 	if err != nil {
 		panic(err)
@@ -27,5 +31,5 @@ func Start() error {
 
 	mux := api.NewRouter(store)
 
-	return http.ListenAndServe(config.BindAddr, mux)
+	return http.ListenAndServe(config.ServerAddress, mux)
 }

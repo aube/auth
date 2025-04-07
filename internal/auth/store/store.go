@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"time"
 
 	_ "github.com/lib/pq"
 
@@ -27,9 +28,17 @@ func NewDB(dsn string) (*sql.DB, error) {
 		return nil, err
 	}
 
+	db.SetConnMaxLifetime(time.Minute * 3)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(10)
+
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
+
+	runPostgres(db)
+
+	// log.Debug("NewDBStore", "dsn", dsn)
 
 	return db, nil
 }

@@ -1,17 +1,39 @@
 package authserver
 
-// Config ...
-type Config struct {
-	BindAddr    string `toml:"bind_addr"`
-	LogLevel    string `toml:"log_level"`
-	DatabaseURL string `toml:"database_url"`
-	SessionKey  string `toml:"session_key"`
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+	"github.com/kelseyhightower/envconfig"
+)
+
+var configPath = "configs/.env.auth"
+
+type envConfig struct {
+	ServerAddress         string `envconfig:"SERVER_ADDRESS" default:"localhost:8080"`
+	LogLevel              string `envconfig:"LOG_LEVEL" default:"info"`
+	DatabaseDSN           string `envconfig:"DATABASE_DSN"`
+	TokenSecret           string `envconfig:"TOKEN_SECRET"`
+	DefaultRequestTimeout string `envconfig:"DEFAULT_REQUEST_TIMEOUT"`
 }
 
-// NewConfig ...
-func NewConfig() *Config {
-	return &Config{
-		BindAddr: ":8080",
-		LogLevel: "debug",
+func NewConfig() *envConfig {
+	env := os.Getenv("GO_ENV")
+
+	if env == "" {
+		env = ".development"
 	}
+
+	godotenv.Load(configPath + env)
+
+	var cfg envConfig
+	err := envconfig.Process("", &cfg)
+	if err != nil {
+		log.Fatal("Failed to process env vars: ", err)
+	}
+
+	fmt.Println("cfg", cfg.LogLevel)
+	return &cfg
 }
