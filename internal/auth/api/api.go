@@ -1,11 +1,30 @@
-package router
+package api
 
 import (
 	"net/http"
+
+	"github.com/aube/gophermart/internal/auth/store"
 )
 
-func NewRouter() *http.ServeMux {
+type server struct {
+	// logger       *logrus.Logger
+	store  store.Store
+	router *http.ServeMux
+}
+
+func NewRouter(store store.Store) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc(`GET /user`, http.HandlerFunc(HandlerUser))
-	return mux
+
+	s := &server{
+		store:  store,
+		router: mux,
+	}
+
+	s.configureRouter()
+
+	return s.router
+}
+
+func (s *server) configureRouter() {
+	s.router.HandleFunc(`GET /user`, http.HandlerFunc(s.HandlerUser))
 }

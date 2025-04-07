@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-func HandlerUser(w http.ResponseWriter, r *http.Request) {
+func (s *server) HandlerUser(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("x-token")
 
 	if token == "" {

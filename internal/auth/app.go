@@ -3,21 +3,29 @@ package authserver
 import (
 	"net/http"
 
-	"github.com/aube/gophermart/internal/auth/router"
+	"github.com/aube/gophermart/internal/auth/api"
 	"github.com/aube/gophermart/internal/auth/store"
 )
 
+/* type ApiServer interface {
+	// logger       *logrus.Logger
+	// store  store.Store
+	router http.ServeMux
+}
+*/
+
 // Start ...
-func Start(config *Config) error {
-	_, err := store.NewStore(config.DatabaseURL)
+func Start() error {
+	config := NewConfig()
+	store, err := store.NewStore(config.DatabaseURL)
 
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	// defer store.db.Close()
 
-	router := router.NewRouter()
+	mux := api.NewRouter(store)
 
-	return http.ListenAndServe(config.BindAddr, router)
+	return http.ListenAndServe(config.BindAddr, mux)
 }

@@ -4,6 +4,7 @@ go 1.23.5
 
 require (
 	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible
+	github.com/lib/pq v1.10.9
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.36.0
 )
