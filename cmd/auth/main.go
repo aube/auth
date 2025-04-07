@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	fmt.Println("gophermert auth")
+	fmt.Println("gophermart auth running")
 
 	authserver.Start()
 }

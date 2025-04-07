@@ -34,6 +34,6 @@ func NewConfig() *envConfig {
 		log.Fatal("Failed to process env vars: ", err)
 	}
 
-	fmt.Println("cfg", cfg.LogLevel)
+	fmt.Println("LogLevel", cfg.LogLevel)
 	return &cfg
 }

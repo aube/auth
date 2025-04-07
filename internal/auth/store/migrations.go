@@ -10,7 +10,7 @@ import (
 //go:embed postgres/migrations/*.sql
 var embedPostgresMigrations embed.FS
 
-func runPostgres(db *sql.DB) {
+func runPostgresMigrations(db *sql.DB) {
 
 	goose.SetBaseFS(embedPostgresMigrations)
 

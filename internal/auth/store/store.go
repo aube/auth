@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -36,9 +37,9 @@ func NewDB(dsn string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	runPostgres(db)
+	fmt.Println("PostgreSQL database connection established")
 
-	// log.Debug("NewDBStore", "dsn", dsn)
+	runPostgresMigrations(db)
 
 	return db, nil
 }

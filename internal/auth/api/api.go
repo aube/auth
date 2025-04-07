@@ -1,13 +1,15 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 
+	"github.com/aube/gophermart/internal/auth/logger"
 	"github.com/aube/gophermart/internal/auth/store"
 )
 
 type server struct {
-	// logger       *logrus.Logger
+	logger *slog.Logger
 	store  store.Store
 	router *http.ServeMux
 }
@@ -16,6 +18,7 @@ func NewRouter(store store.Store) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	s := &server{
+		logger: logger.New(),
 		store:  store,
 		router: mux,
 	}

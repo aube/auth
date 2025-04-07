@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"context"
 	"io"
 	"log/slog"
 	"os"
@@ -50,8 +49,8 @@ func Init(cfg Config) {
 	})
 }
 
-// Get returns the global logger instance
-func Get() *slog.Logger {
+// New ...
+func New() *slog.Logger {
 	if globalLogger == nil {
 		Init(Config{
 			Level:     slog.LevelInfo,
@@ -64,7 +63,7 @@ func Get() *slog.Logger {
 }
 
 // WithContext creates a new logger with context values
-func WithContext(ctx context.Context) *slog.Logger {
+/* func WithContext(ctx context.Context) *slog.Logger {
 	logger := Get()
 
 	// Add request ID if present in context
@@ -74,3 +73,4 @@ func WithContext(ctx context.Context) *slog.Logger {
 
 	return logger
 }
+*/
