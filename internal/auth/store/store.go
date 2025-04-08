@@ -7,8 +7,8 @@ import (
 
 	_ "github.com/lib/pq"
 
+	"github.com/aube/gophermart/internal/auth/repos"
 	"github.com/aube/gophermart/internal/auth/store/postgres"
-	"github.com/aube/gophermart/internal/auth/store/repos"
 )
 
 type Store interface {

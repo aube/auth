@@ -3,7 +3,7 @@ package postgres
 import (
 	"database/sql"
 
-	"github.com/aube/gophermart/internal/auth/store/model"
+	"github.com/aube/gophermart/internal/auth/model"
 )
 
 // UserRepository ...

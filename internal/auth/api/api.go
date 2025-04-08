@@ -10,8 +10,8 @@ import (
 
 type server struct {
 	logger *slog.Logger
-	store  store.Store
 	router *http.ServeMux
+	store  store.Store
 }
 
 func NewRouter(store store.Store) *http.ServeMux {
