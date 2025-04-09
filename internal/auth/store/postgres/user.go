@@ -1,18 +1,19 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/aube/gophermart/internal/auth/model"
 )
 
-// UserRepository ...
+// User ...
 type UserRepository struct {
 	store *SQLStore
 }
 
 // Create ...
-func (r *UserRepository) Create(u *model.User) error {
+func (r *UserRepository) Create(ctx context.Context, u *model.User) error {
 	if err := u.Validate(); err != nil {
 		return err
 	}
@@ -29,7 +30,7 @@ func (r *UserRepository) Create(u *model.User) error {
 }
 
 // Find ...
-func (r *UserRepository) Find(id int) (*model.User, error) {
+func (r *UserRepository) Find(ctx context.Context, id int) (*model.User, error) {
 	u := &model.User{}
 	if err := r.store.db.QueryRow(
 		"SELECT id, email, encrypted_password FROM users WHERE id = $1",
@@ -50,7 +51,7 @@ func (r *UserRepository) Find(id int) (*model.User, error) {
 }
 
 // FindByEmail ...
-func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
+func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*model.User, error) {
 	u := &model.User{}
 	if err := r.store.db.QueryRow(
 		"SELECT id, email, encrypted_password FROM users WHERE email = $1",

@@ -20,7 +20,7 @@ func New(db *sql.DB) *SQLStore {
 }
 
 // User ...
-func (s *SQLStore) User() repos.UserRepository {
+func (s *SQLStore) User() repos.IUserRepository {
 	if s.userRepository != nil {
 		return s.userRepository
 	}

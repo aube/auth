@@ -12,7 +12,7 @@ import (
 )
 
 type Store interface {
-	User() repos.UserRepository
+	User() repos.IUserRepository
 }
 
 func NewStore(config string) (Store, error) {
