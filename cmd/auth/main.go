@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
-	authserver "github.com/aube/gophermart/internal/auth"
+	authserver "github.com/aube/auth/internal/auth"
 )
 
 func main() {
-	fmt.Println("gophermart auth running")
+	fmt.Println("auth auth running")
 
 	authserver.Start()
 }

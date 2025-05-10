@@ -1,4 +1,4 @@
-module github.com/aube/gophermart
+module github.com/aube/auth
 
 go 1.23.5
 
