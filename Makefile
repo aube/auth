@@ -1,10 +1,6 @@
-.PHONY: auth
-auth:
+.PHONY: run
+run:
 	go run -v ./cmd/auth
-
-#.PHONY: mocks
-#mocks:
-#	docker run -v "$PWD":/src -w /src vektra/mockery --all
 
 .PHONY: test
 test:
@@ -20,4 +16,4 @@ cover:
 	go tool cover -html=coverage.html
 	rm coverage.out
 
-#.DEFAULT_GOAL := auth
+.DEFAULT_GOAL := run
