@@ -22,9 +22,9 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 }
 
 func (r *UserRepository) Create(ctx context.Context, user *entities.User) error {
-	query := `INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id`
+	query := `INSERT INTO users (username, email, encrypted_password) VALUES ($1, $2, $3) RETURNING id`
 
-	err := r.db.QueryRow(ctx, query, user.Username, user.GetHashedPassword()).Scan(&user.ID)
+	err := r.db.QueryRow(ctx, query, user.Username, user.Email, user.GetHashedPassword()).Scan(&user.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
@@ -33,7 +33,7 @@ func (r *UserRepository) Create(ctx context.Context, user *entities.User) error 
 }
 
 func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*entities.User, error) {
-	query := `SELECT id, username, password FROM users WHERE username = $1`
+	query := `SELECT id, username, encrypted_password as password FROM users WHERE username = $1`
 
 	var (
 		id       int64

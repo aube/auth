@@ -2,22 +2,31 @@ package rest
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/interfaces/rest/handlers"
 	"github.com/aube/auth/internal/interfaces/rest/middlewares"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 func SetupRouter(userService *user.UserService, jwtSecret string) *gin.Engine {
 	r := gin.Default()
-
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 	// Загрузка шаблонов (только index.html)
-	r.LoadHTMLGlob("interfaces/rest/templates/*")
+	r.LoadHTMLGlob("internal/interfaces/rest/templates/*")
 
 	// Статические файлы
-	r.Static("/static", "./interfaces/rest/static")
+	r.Static("/static", "internal/interfaces/rest/static")
 
 	webHandler := handlers.NewWebHandler()
 	apiHandler := handlers.NewUserHandler(userService, jwtSecret)

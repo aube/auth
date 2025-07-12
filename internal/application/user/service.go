@@ -51,6 +51,7 @@ func (s *UserService) Register(ctx context.Context, dto CreateUserDTO) (*UserRes
 	return &UserResponseDTO{
 		ID:       user.ID,
 		Username: user.Username,
+		Email:    user.Email,
 	}, nil
 }
 

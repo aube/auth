@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -37,6 +38,11 @@ func NewPool(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 
 	if err := pool.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	// Run migrations
+	if err := runPostgresMigrations(pool); err != nil {
+		log.Fatalf("Migrations failed: %v", err)
 	}
 
 	return pool, nil

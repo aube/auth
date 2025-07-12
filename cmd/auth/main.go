@@ -2,26 +2,31 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"os"
 
 	"github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/infrastructure/postgres"
 	"github.com/aube/auth/internal/interfaces/rest"
+	"github.com/spf13/viper"
 )
 
 func main() {
 	ctx := context.Background()
+	viper.SetConfigFile(".env")
+	viper.ReadInConfig()
 
 	// Инициализация БД
 	pgConfig := postgres.Config{
-		Host:     os.Getenv("DB_HOST"),
-		Port:     os.Getenv("DB_PORT"),
-		User:     os.Getenv("DB_USER"),
-		Password: os.Getenv("DB_PASSWORD"),
-		DBName:   os.Getenv("DB_NAME"),
+		Host:     viper.Get("DB_HOST").(string),
+		Port:     viper.Get("DB_PORT").(string),
+		User:     viper.Get("DB_USER").(string),
+		Password: viper.Get("DB_PASSWORD").(string),
+		DBName:   viper.Get("DB_NAME").(string),
 		SSLMode:  "disable",
 	}
+
+	fmt.Println(pgConfig)
 
 	dbPool, err := postgres.NewPool(ctx, pgConfig)
 	if err != nil {
@@ -34,9 +39,9 @@ func main() {
 	userService := user.NewUserService(userRepo)
 
 	// Запуск сервера
-	jwtSecret := os.Getenv("JWT_SECRET")
+	jwtSecret := viper.Get("JWT_SECRET").(string)
 	if jwtSecret == "" {
-		jwtSecret = "default-secret-key" // В продакшене используйте надежный секрет
+		log.Fatalf("JWT_SECRET not found")
 	}
 
 	server := rest.NewServer(userService, jwtSecret)

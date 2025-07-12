@@ -34,6 +34,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	userDTO := user.CreateUserDTO{
 		Username: req.Username,
 		Password: req.Password,
+		Email:    req.Email,
 	}
 
 	createdUser, err := h.userService.Register(ctx, userDTO)
@@ -49,7 +50,9 @@ func (h *UserHandler) Logout(c *gin.Context) {
 }
 
 func (h *UserHandler) Login(c *gin.Context) {
+
 	var req dto.LoginRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
