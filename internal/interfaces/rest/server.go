@@ -4,7 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/aube/auth/internal/application/user"
+	appFile "github.com/aube/auth/internal/application/file"
+	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,8 +14,16 @@ type Server struct {
 	httpServer *http.Server
 }
 
-func NewServer(userService *user.UserService, jwtSecret string) *Server {
-	router := SetupRouter(userService, jwtSecret)
+func NewServer(
+	userService *appUser.UserService,
+	fileService *appFile.FileService,
+	jwtSecret string,
+	apiPath string,
+) *Server {
+	router, apiGroup := NewRouter(apiPath)
+	SetupUserRouter(apiGroup, userService, jwtSecret)
+	SetupFilesRouter(apiGroup, fileService, jwtSecret)
+	SetupStaticRouter(router)
 
 	return &Server{
 		router: router,

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/aube/auth/internal/application/user"
+	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/domain/entities"
 	"github.com/aube/auth/internal/domain/valueobjects"
 
@@ -44,7 +44,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	err := r.db.QueryRow(ctx, query, username).Scan(&id, &dbUser, &password)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, user.ErrUserNotFound
+			return nil, appUser.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aube/auth/internal/application/user"
+	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/interfaces/rest/dto"
 
 	"github.com/gin-gonic/gin"
@@ -12,11 +12,11 @@ import (
 )
 
 type UserHandler struct {
-	userService *user.UserService
+	userService *appUser.UserService
 	jwtSecret   []byte
 }
 
-func NewUserHandler(userService *user.UserService, jwtSecret string) *UserHandler {
+func NewUserHandler(userService *appUser.UserService, jwtSecret string) *UserHandler {
 	return &UserHandler{
 		userService: userService,
 		jwtSecret:   []byte(jwtSecret),
@@ -31,7 +31,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	userDTO := user.CreateUserDTO{
+	userDTO := appUser.CreateUserDTO{
 		Username: req.Username,
 		Password: req.Password,
 		Email:    req.Email,
@@ -47,6 +47,9 @@ func (h *UserHandler) Register(c *gin.Context) {
 }
 
 func (h *UserHandler) Logout(c *gin.Context) {
+
+	c.JSON(http.StatusOK, gin.H{})
+
 }
 
 func (h *UserHandler) Login(c *gin.Context) {
@@ -59,7 +62,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	loginDTO := user.LoginDTO{
+	loginDTO := appUser.LoginDTO{
 		Username: req.Username,
 		Password: req.Password,
 	}
@@ -71,7 +74,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	// Генерация JWT токена
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
 		"sub": userEntity.ID,
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
 	})
