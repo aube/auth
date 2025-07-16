@@ -21,3 +21,7 @@ func (h *WebHandler) ServeSPA(c *gin.Context) {
 		"Title": "Auth App",
 	})
 }
+
+func (h *WebHandler) AppState200(c *gin.Context) {
+	c.String(http.StatusOK, "ololo")
+}

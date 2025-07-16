@@ -23,7 +23,7 @@ func NewServer(
 	router, apiGroup := NewRouter(apiPath)
 	SetupUserRouter(apiGroup, userService, jwtSecret)
 	SetupFilesRouter(apiGroup, fileService, jwtSecret)
-	SetupStaticRouter(router)
+	SetupStaticRouter(router, apiPath)
 
 	return &Server{
 		router: router,

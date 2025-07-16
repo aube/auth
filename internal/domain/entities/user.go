@@ -13,9 +13,13 @@ type User struct {
 	password *valueobjects.Password
 }
 
-func NewUser(id int64, username string, password *valueobjects.Password) (*User, error) {
+func NewUser(id int64, username string, email string, password *valueobjects.Password) (*User, error) {
 	if username == "" {
 		return nil, errors.New("username cannot be empty")
+	}
+
+	if email == "" {
+		return nil, errors.New("email cannot be nil")
 	}
 
 	if password == nil {
@@ -25,6 +29,7 @@ func NewUser(id int64, username string, password *valueobjects.Password) (*User,
 	return &User{
 		ID:       id,
 		Username: username,
+		Email:    email,
 		password: password,
 	}, nil
 }

@@ -9,12 +9,15 @@ import (
 
 	appFile "github.com/aube/auth/internal/application/file"
 	"github.com/aube/auth/internal/domain/entities"
+	"github.com/aube/auth/internal/utils/logger"
+	"github.com/rs/zerolog"
 )
 
 // FileSystemRepository реализация FileRepository для хранения файлов в файловой системе
 type FileSystemRepository struct {
 	storagePath string
 	mu          sync.RWMutex
+	log         zerolog.Logger
 }
 
 // NewFileSystemRepository создает новый экземпляр FileSystemRepository
@@ -22,7 +25,10 @@ func NewFileSystemRepository(storagePath string) (*FileSystemRepository, error) 
 	if err := os.MkdirAll(storagePath, 0755); err != nil {
 		return nil, err
 	}
-	return &FileSystemRepository{storagePath: storagePath}, nil
+	return &FileSystemRepository{
+		storagePath: storagePath,
+		log:         logger.Get().With().Str("fs", "file_repository").Logger(),
+	}, nil
 }
 
 func (r *FileSystemRepository) Save(ctx context.Context, file *entities.File, data io.Reader) error {
@@ -32,11 +38,13 @@ func (r *FileSystemRepository) Save(ctx context.Context, file *entities.File, da
 	filePath := filepath.Join(r.storagePath, file.ID)
 	dst, err := os.Create(filePath)
 	if err != nil {
+		r.log.Debug().Err(err).Msg("Save")
 		return err
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, data); err != nil {
+		r.log.Debug().Err(err).Msg("Save")
 		return err
 	}
 
@@ -50,6 +58,7 @@ func (r *FileSystemRepository) FindByID(ctx context.Context, id string) (*entiti
 	filePath := filepath.Join(r.storagePath, id)
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
+		r.log.Debug().Err(err).Msg("FindByID")
 		if os.IsNotExist(err) {
 			return nil, appFile.ErrFileNotFound
 		}
@@ -73,6 +82,7 @@ func (r *FileSystemRepository) FindAll(ctx context.Context) ([]*entities.File, e
 
 	files, err := os.ReadDir(r.storagePath)
 	if err != nil {
+		r.log.Debug().Err(err).Msg("FindAll")
 		return nil, err
 	}
 
@@ -105,6 +115,7 @@ func (r *FileSystemRepository) Delete(ctx context.Context, id string) error {
 
 	filePath := filepath.Join(r.storagePath, id)
 	if err := os.Remove(filePath); err != nil {
+		r.log.Debug().Err(err).Msg("Delete")
 		if os.IsNotExist(err) {
 			return appFile.ErrFileNotFound
 		}

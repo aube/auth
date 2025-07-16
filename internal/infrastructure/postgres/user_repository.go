@@ -8,24 +8,38 @@ import (
 	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/domain/entities"
 	"github.com/aube/auth/internal/domain/valueobjects"
+	"github.com/aube/auth/internal/utils/logger"
+	"github.com/rs/zerolog"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+const (
+	queryUserInsert       string = "INSERT INTO users (username, email, encrypted_password) VALUES ($1, $2, $3) RETURNING id"
+	queryUserSelectByName string = "SELECT id, username, email, encrypted_password as password FROM users WHERE username = $1"
+	queryUserSelectByID   string = "SELECT id, username, email FROM users WHERE id = $1"
+	queryUserCheckExists  string = "SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)"
+)
+
 type UserRepository struct {
-	db *pgxpool.Pool
+	db  *pgxpool.Pool
+	log zerolog.Logger
 }
 
 func NewUserRepository(db *pgxpool.Pool) *UserRepository {
-	return &UserRepository{db: db}
+	return &UserRepository{
+		db:  db,
+		log: logger.Get().With().Str("postgres", "user_repository").Logger(),
+	}
 }
 
 func (r *UserRepository) Create(ctx context.Context, user *entities.User) error {
-	query := `INSERT INTO users (username, email, encrypted_password) VALUES ($1, $2, $3) RETURNING id`
-
-	err := r.db.QueryRow(ctx, query, user.Username, user.Email, user.GetHashedPassword()).Scan(&user.ID)
+	err := r.db.QueryRow(ctx, queryUserInsert, user.Username, user.Email, user.GetHashedPassword()).Scan(&user.ID)
 	if err != nil {
+		r.log.Debug().Err(err).Msg(user.Username)
+		r.log.Debug().Err(err).Msg(user.Email)
+		r.log.Debug().Err(err).Msg("Create")
 		return fmt.Errorf("failed to create user: %w", err)
 	}
 
@@ -33,16 +47,16 @@ func (r *UserRepository) Create(ctx context.Context, user *entities.User) error 
 }
 
 func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*entities.User, error) {
-	query := `SELECT id, username, encrypted_password as password FROM users WHERE username = $1`
-
 	var (
 		id       int64
 		dbUser   string
 		password string
+		email    string
 	)
 
-	err := r.db.QueryRow(ctx, query, username).Scan(&id, &dbUser, &password)
+	err := r.db.QueryRow(ctx, queryUserSelectByName, username).Scan(&id, &dbUser, &email, &password)
 	if err != nil {
+		r.log.Debug().Err(err).Msg("FindByUsername")
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, appUser.ErrUserNotFound
 		}
@@ -54,15 +68,37 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 		return nil, fmt.Errorf("invalid password format in DB: %w", err)
 	}
 
-	return entities.NewUser(id, dbUser, pwd)
+	return entities.NewUser(id, dbUser, email, pwd)
+}
+
+func (r *UserRepository) FindByID(ctx context.Context, userID int64) (*appUser.UserResponseDTO, error) {
+	var (
+		id     int64
+		dbUser string
+		email  string
+	)
+
+	err := r.db.QueryRow(ctx, queryUserSelectByID, userID).Scan(&id, &dbUser, &email)
+	if err != nil {
+		r.log.Debug().Err(err).Msg("FindByID")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, appUser.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to find user: %w", err)
+	}
+
+	return &appUser.UserResponseDTO{
+		ID:       id,
+		Username: dbUser,
+		Email:    email,
+	}, nil
 }
 
 func (r *UserRepository) Exists(ctx context.Context, username string) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)`
-
 	var exists bool
-	err := r.db.QueryRow(ctx, query, username).Scan(&exists)
+	err := r.db.QueryRow(ctx, queryUserCheckExists, username).Scan(&exists)
 	if err != nil {
+		r.log.Debug().Err(err).Msg("Exists")
 		return false, fmt.Errorf("failed to check user existence: %w", err)
 	}
 

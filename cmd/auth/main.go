@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
+	"github.com/aube/auth/internal/api/rest"
 	appFile "github.com/aube/auth/internal/application/file"
 	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/infrastructure/fs"
 	"github.com/aube/auth/internal/infrastructure/postgres"
-	"github.com/aube/auth/internal/interfaces/rest"
+	"github.com/aube/auth/internal/utils/logger"
 	"github.com/spf13/viper"
 )
 
@@ -19,7 +19,10 @@ func main() {
 	viper.SetConfigFile(".env")
 	viper.SetDefault("STORAGE_PATH", "./_storage")
 	viper.SetDefault("API_PATH", "/api/v1")
+	viper.SetDefault("LOG_LEVEL", "debug")
 	viper.ReadInConfig()
+
+	logger.Init(viper.Get("LOG_LEVEL").(string))
 
 	// Инициализация БД
 	pgConfig := postgres.Config{
@@ -40,9 +43,6 @@ func main() {
 
 	// Инициализация хранилища файлов
 	storagePath := viper.Get("STORAGE_PATH").(string)
-	if err := os.MkdirAll(storagePath, 0755); err != nil {
-		log.Fatalf("Failed to create storage directory: %v", err)
-	}
 	fsRepo, err := fs.NewFileSystemRepository(storagePath)
 	if err != nil {
 		log.Fatalf("Failed to initialize file repository: %v", err)

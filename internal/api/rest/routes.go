@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/aube/auth/internal/api/rest/handlers"
+	"github.com/aube/auth/internal/api/rest/middlewares"
 	appFile "github.com/aube/auth/internal/application/file"
 	appUser "github.com/aube/auth/internal/application/user"
-	"github.com/aube/auth/internal/interfaces/rest/handlers"
-	"github.com/aube/auth/internal/interfaces/rest/middlewares"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -28,18 +28,18 @@ func NewRouter(apiPath string) (*gin.Engine, *gin.RouterGroup) {
 }
 
 func SetupUserRouter(api *gin.RouterGroup, userService *appUser.UserService, jwtSecret string) {
-	apiHandler := handlers.NewUserHandler(userService, jwtSecret)
+	userHandler := handlers.NewUserHandler(userService, jwtSecret)
 
 	// API маршруты
-	api.POST("/register", apiHandler.Register)
-	api.POST("/login", apiHandler.Login)
+	api.POST("/register", userHandler.Register)
+	api.POST("/login", userHandler.Login)
 
 	// Защищённые маршруты
 	authApi := api.Group("/")
 	authApi.Use(middlewares.AuthMiddleware(jwtSecret))
 	{
-		authApi.GET("/profile", apiHandler.GetProfile)
-		authApi.POST("/logout", apiHandler.Logout)
+		authApi.GET("/profile", userHandler.GetProfile)
+		authApi.POST("/logout", userHandler.Logout)
 	}
 }
 
@@ -48,25 +48,30 @@ func SetupFilesRouter(api *gin.RouterGroup, fileService *appFile.FileService, jw
 
 	// Защищённые маршруты
 	authApi := api.Group("/")
-	authApi.Use(middlewares.AuthMiddleware(jwtSecret))
+	// authApi.Use(middlewares.AuthMiddleware(jwtSecret))
 	{
 		authApi.POST("/upload", fileHandler.UploadFile)
 		authApi.GET("/download", fileHandler.DownloadFile)
 		authApi.GET("/files", fileHandler.ListFiles)
 		authApi.DELETE("/delete", fileHandler.DeleteFile)
+
+		// authApi.GET("/uploads", fileHandler.DownloadFile)
 	}
 }
 
-func SetupStaticRouter(r *gin.Engine) *gin.Engine {
+func SetupStaticRouter(r *gin.Engine, apiPath string) *gin.Engine {
 	// Загрузка шаблонов (только index.html)
-	r.LoadHTMLGlob("internal/interfaces/rest/templates/*")
+	r.LoadHTMLGlob("internal/api/rest/templates/*")
 
 	// Статические файлы
-	r.Static("/static", "internal/interfaces/rest/static")
+	r.Static("/static", "internal/api/rest/static")
 
 	webHandler := handlers.NewWebHandler()
 
-	// Все GET запросы (кроме API) возвращают SPA
+	// Состояние апи
+	r.GET(apiPath+"/state", webHandler.AppState200)
+
+	// Все остальные GET запросы (кроме API) возвращают SPA
 	r.GET("/", webHandler.ServeSPA)
 	r.GET("/login", webHandler.ServeSPA)
 	r.GET("/register", webHandler.ServeSPA)
