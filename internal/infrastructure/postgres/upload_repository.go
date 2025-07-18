@@ -40,6 +40,10 @@ func (r *UploadRepository) Create(ctx context.Context, upload *entities.Upload) 
 	return nil
 }
 
-func (r *UploadRepository) ListByUserID(ctx context.Context, username string) {
+func (r *UploadRepository) ListByUserID(ctx context.Context, username string) (*[]entities.Upload, error) {
+	return nil, nil
+}
 
+func (r *UploadRepository) Delete(ctx context.Context, uuid string) error {
+	return nil
 }

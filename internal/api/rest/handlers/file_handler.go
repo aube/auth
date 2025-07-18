@@ -8,6 +8,7 @@ import (
 
 	"github.com/aube/auth/internal/api/rest/dto"
 	appFile "github.com/aube/auth/internal/application/file"
+	appUpload "github.com/aube/auth/internal/application/upload"
 	"github.com/aube/auth/internal/utils/logger"
 	"github.com/rs/zerolog"
 
@@ -16,15 +17,17 @@ import (
 
 // FileHandler обрабатывает HTTP запросы для работы с файлами
 type FileHandler struct {
-	service *appFile.FileService
-	log     zerolog.Logger
+	FileService   *appFile.FileService
+	UploadService *appUpload.UploadService
+	log           zerolog.Logger
 }
 
 // NewFileHandler создает новый экземпляр FileHandler
-func NewFileHandler(service *appFile.FileService) *FileHandler {
+func NewFileHandler(FileService *appFile.FileService, UploadService *appUpload.UploadService) *FileHandler {
 	return &FileHandler{
-		service: service,
-		log:     logger.Get().With().Str("handlers", "file_handler").Logger(),
+		FileService:   FileService,
+		UploadService: UploadService,
+		log:           logger.Get().With().Str("handlers", "file_handler").Logger(),
 	}
 }
 
@@ -45,7 +48,7 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 	}
 	defer file.Close()
 
-	uploadedFile, err := h.service.Upload(
+	uploadedFile, err := h.FileService.Upload(
 		c.Request.Context(),
 		fileHeader.Filename,
 		fileHeader.Header.Get("Content-Type"),
@@ -69,7 +72,7 @@ func (h *FileHandler) DownloadFile(c *gin.Context) {
 		return
 	}
 
-	file, err := h.service.GetByID(c.Request.Context(), fileID)
+	file, err := h.FileService.GetByID(c.Request.Context(), fileID)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("DownloadFile1")
 		if errors.Is(err, appFile.ErrFileNotFound) {
@@ -80,7 +83,7 @@ func (h *FileHandler) DownloadFile(c *gin.Context) {
 		return
 	}
 
-	content, err := h.service.Download(c.Request.Context(), file)
+	content, err := h.FileService.Download(c.Request.Context(), file)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("DownloadFile2")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
@@ -102,7 +105,7 @@ func (h *FileHandler) DownloadFile(c *gin.Context) {
 
 // ListFiles возвращает список всех файлов
 func (h *FileHandler) ListFiles(c *gin.Context) {
-	files, err := h.service.List(c.Request.Context())
+	files, err := h.FileService.List(c.Request.Context())
 	if err != nil {
 		h.log.Debug().Err(err).Msg("ListFiles")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list files"})
@@ -125,7 +128,7 @@ func (h *FileHandler) DeleteFile(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.Delete(c.Request.Context(), fileID); err != nil {
+	if err := h.FileService.Delete(c.Request.Context(), fileID); err != nil {
 		h.log.Debug().Err(err).Msg("DeleteFile")
 		if errors.Is(err, appFile.ErrFileNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})

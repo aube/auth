@@ -20,7 +20,7 @@ func NewUploadService(repo UploadRepository) *UploadService {
 	}
 }
 
-func (s *UploadService) ListByUserID(ctx context.Context, id string) (*[]entities.File, error) {
+func (s *UploadService) ListByUserID(ctx context.Context, id string) (*[]entities.Upload, error) {
 	return s.repo.ListByUserID(ctx, id)
 }
 

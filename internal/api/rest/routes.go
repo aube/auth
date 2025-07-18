@@ -7,6 +7,7 @@ import (
 	"github.com/aube/auth/internal/api/rest/handlers"
 	"github.com/aube/auth/internal/api/rest/middlewares"
 	appFile "github.com/aube/auth/internal/application/file"
+	appUpload "github.com/aube/auth/internal/application/upload"
 	appUser "github.com/aube/auth/internal/application/user"
 
 	"github.com/gin-contrib/cors"
@@ -43,8 +44,8 @@ func SetupUserRouter(api *gin.RouterGroup, userService *appUser.UserService, jwt
 	}
 }
 
-func SetupFilesRouter(api *gin.RouterGroup, fileService *appFile.FileService, jwtSecret string) {
-	fileHandler := handlers.NewFileHandler(fileService)
+func SetupFilesRouter(api *gin.RouterGroup, fileService *appFile.FileService, uploadService *appUpload.UploadService) {
+	fileHandler := handlers.NewFileHandler(fileService, uploadService)
 
 	// Защищённые маршруты
 	authApi := api.Group("/")

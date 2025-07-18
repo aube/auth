@@ -7,6 +7,7 @@ import (
 
 	"github.com/aube/auth/internal/api/rest"
 	appFile "github.com/aube/auth/internal/application/file"
+	appUpload "github.com/aube/auth/internal/application/upload"
 	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/infrastructure/fs"
 	"github.com/aube/auth/internal/infrastructure/postgres"
@@ -50,6 +51,9 @@ func main() {
 
 	fileService := appFile.NewFileService(fsRepo)
 
+	uploadRepo := postgres.NewUploadRepository(dbPool)
+	uploadService := appUpload.NewUploadService(uploadRepo)
+
 	// Инициализация репозитория и сервиса
 	userRepo := postgres.NewUserRepository(dbPool)
 	userService := appUser.NewUserService(userRepo)
@@ -61,7 +65,7 @@ func main() {
 	}
 	apiPath := viper.Get("API_PATH").(string)
 
-	server := rest.NewServer(userService, fileService, jwtSecret, apiPath)
+	server := rest.NewServer(userService, fileService, uploadService, jwtSecret, apiPath)
 	if err := server.Start(); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
