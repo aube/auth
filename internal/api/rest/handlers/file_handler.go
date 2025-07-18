@@ -33,6 +33,10 @@ func NewFileHandler(FileService *appFile.FileService, UploadService *appUpload.U
 
 // UploadFile обрабатывает загрузку файла
 func (h *FileHandler) UploadFile(c *gin.Context) {
+	userID := c.GetString("userID")
+
+	description := c.PostForm("description")
+
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		h.log.Debug().Err(err).Msg("UploadFile1")
@@ -54,10 +58,18 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		fileHeader.Header.Get("Content-Type"),
 		fileHeader.Size,
 		file,
+		description,
 	)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("UploadFile3")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload file"})
+		return
+	}
+
+	err = h.UploadService.RegisterUploadedFile(c.Request.Context(), userID, uploadedFile)
+	if err != nil {
+		h.log.Debug().Err(err).Msg("UploadFile4")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write upload file into DB"})
 		return
 	}
 

@@ -22,13 +22,14 @@ func NewFileService(repo FileRepository) *FileService {
 	}
 }
 
-func (s *FileService) Upload(ctx context.Context, name, contentType string, size int64, data io.Reader) (*entities.File, error) {
+func (s *FileService) Upload(ctx context.Context, name, contentType string, size int64, data io.Reader, description string) (*entities.File, error) {
 	file := entities.NewFile(
 		generateFileID(),
 		name,
 		contentType,
 		"", // Путь будет установлен в репозитории
 		size,
+		description,
 	)
 	if err := s.repo.Save(ctx, file, data); err != nil {
 		return nil, err

@@ -4,8 +4,10 @@
 CREATE TABLE uploads (
     id serial not null primary key,
     user_id integer not null,
-    dataname varchar not null,
-    filename uuid not null,
+    uuid uuid not null,
+    size bigint default 0,
+    type varchar not null,
+    name varchar not null,
     description text default '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

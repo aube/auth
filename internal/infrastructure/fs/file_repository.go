@@ -35,10 +35,11 @@ func (r *FileSystemRepository) Save(ctx context.Context, file *entities.File, da
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	filePath := filepath.Join(r.storagePath, file.ID)
+	filePath := filepath.Join(r.storagePath, file.UUID)
 	dst, err := os.Create(filePath)
 	if err != nil {
 		r.log.Debug().Err(err).Msg("Save")
+		r.log.Debug().Msg(filePath)
 		return err
 	}
 	defer dst.Close()
