@@ -40,7 +40,6 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
 			return
 		}
-
 		userID := claims["sub"].(float64)
 		c.Set("userID", int64(userID))
 		fmt.Println("Authenticated user ID:", userID)

@@ -35,7 +35,7 @@ func (r *FileSystemRepository) Save(ctx context.Context, file *entities.File, da
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	filePath := filepath.Join(r.storagePath, file.UUID)
+	filePath := filepath.Join(r.storagePath, file.Name)
 	dst, err := os.Create(filePath)
 	if err != nil {
 		r.log.Debug().Err(err).Msg("Save")
@@ -52,32 +52,7 @@ func (r *FileSystemRepository) Save(ctx context.Context, file *entities.File, da
 	return nil
 }
 
-func (r *FileSystemRepository) FindByID(ctx context.Context, id string) (*entities.File, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	filePath := filepath.Join(r.storagePath, id)
-	fileInfo, err := os.Stat(filePath)
-	if err != nil {
-		r.log.Debug().Err(err).Msg("FindByID")
-		if os.IsNotExist(err) {
-			return nil, appFile.ErrFileNotFound
-		}
-		return nil, err
-	}
-
-	// В реальном приложении нужно хранить метаданные в БД
-	// Здесь упрощенная реализация
-	return &entities.File{
-		ID:         id,
-		Name:       id, // В реальном приложении имя должно храниться отдельно
-		Size:       fileInfo.Size(),
-		Path:       filePath,
-		UploadedAt: fileInfo.ModTime(),
-	}, nil
-}
-
-func (r *FileSystemRepository) FindAll(ctx context.Context) ([]*entities.File, error) {
+func (r *FileSystemRepository) FindAll(ctx context.Context) (*entities.Files, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -87,7 +62,7 @@ func (r *FileSystemRepository) FindAll(ctx context.Context) ([]*entities.File, e
 		return nil, err
 	}
 
-	var result []*entities.File
+	var result entities.Files
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -98,23 +73,21 @@ func (r *FileSystemRepository) FindAll(ctx context.Context) ([]*entities.File, e
 			continue
 		}
 
-		result = append(result, &entities.File{
-			ID:         file.Name(),
-			Name:       file.Name(),
-			Size:       fileInfo.Size(),
-			Path:       filepath.Join(r.storagePath, file.Name()),
-			UploadedAt: fileInfo.ModTime(),
-		})
+		result = append(result, *entities.NewFile(
+			file.Name(),
+			filepath.Join(r.storagePath, file.Name()),
+			fileInfo.Size(),
+		))
 	}
 
-	return result, nil
+	return &result, nil
 }
 
-func (r *FileSystemRepository) Delete(ctx context.Context, id string) error {
+func (r *FileSystemRepository) Delete(ctx context.Context, uuid string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	filePath := filepath.Join(r.storagePath, id)
+	filePath := filepath.Join(r.storagePath, uuid)
 	if err := os.Remove(filePath); err != nil {
 		r.log.Debug().Err(err).Msg("Delete")
 		if os.IsNotExist(err) {
@@ -125,11 +98,12 @@ func (r *FileSystemRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *FileSystemRepository) GetFileContent(ctx context.Context, file *entities.File) (io.ReadCloser, error) {
+func (r *FileSystemRepository) GetFileContent(ctx context.Context, uuid string) (io.ReadCloser, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	return os.Open(file.Path)
+	filePath := filepath.Join(r.storagePath, uuid)
+	return os.Open(filePath)
 }
 
 var _ appFile.FileRepository = (*FileSystemRepository)(nil)

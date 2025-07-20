@@ -52,10 +52,8 @@ func main() {
 	fileService := appFile.NewFileService(fsRepo)
 
 	uploadRepo := postgres.NewUploadRepository(dbPool)
-	uploadService := appUpload.NewUploadService(uploadRepo)
-
-	// Инициализация репозитория и сервиса
 	userRepo := postgres.NewUserRepository(dbPool)
+	uploadService := appUpload.NewUploadService(uploadRepo)
 	userService := appUser.NewUserService(userRepo)
 
 	// Запуск сервера

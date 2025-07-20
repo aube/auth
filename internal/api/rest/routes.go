@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aube/auth/internal/api/rest/handlers"
+	"github.com/aube/auth/internal/api/rest/handlers_common"
+	"github.com/aube/auth/internal/api/rest/handlers_upload"
+	"github.com/aube/auth/internal/api/rest/handlers_user"
 	"github.com/aube/auth/internal/api/rest/middlewares"
 	appFile "github.com/aube/auth/internal/application/file"
 	appUpload "github.com/aube/auth/internal/application/upload"
@@ -29,7 +31,7 @@ func NewRouter(apiPath string) (*gin.Engine, *gin.RouterGroup) {
 }
 
 func SetupUserRouter(api *gin.RouterGroup, userService *appUser.UserService, jwtSecret string) {
-	userHandler := handlers.NewUserHandler(userService, jwtSecret)
+	userHandler := handlers_user.NewUserHandler(userService, jwtSecret)
 
 	// API маршруты
 	api.POST("/register", userHandler.Register)
@@ -44,19 +46,17 @@ func SetupUserRouter(api *gin.RouterGroup, userService *appUser.UserService, jwt
 	}
 }
 
-func SetupFilesRouter(api *gin.RouterGroup, fileService *appFile.FileService, uploadService *appUpload.UploadService) {
-	fileHandler := handlers.NewFileHandler(fileService, uploadService)
+func SetupUploadsRouter(api *gin.RouterGroup, fileService *appFile.FileService, uploadService *appUpload.UploadService, jwtSecret string) {
+	uploadHandler := handlers_upload.NewUploadHandler(fileService, uploadService)
 
 	// Защищённые маршруты
 	authApi := api.Group("/")
-	// authApi.Use(middlewares.AuthMiddleware(jwtSecret))
+	authApi.Use(middlewares.AuthMiddleware(jwtSecret))
 	{
-		authApi.POST("/upload", fileHandler.UploadFile)
-		authApi.GET("/download", fileHandler.DownloadFile)
-		authApi.GET("/files", fileHandler.ListFiles)
-		authApi.DELETE("/delete", fileHandler.DeleteFile)
-
-		// authApi.GET("/uploads", fileHandler.DownloadFile)
+		authApi.POST("/upload", uploadHandler.UploadFile)
+		authApi.GET("/download", uploadHandler.DownloadFile)
+		authApi.DELETE("/delete", uploadHandler.DeleteFile)
+		authApi.GET("/uploads", uploadHandler.ListFiles)
 	}
 }
 
@@ -67,7 +67,7 @@ func SetupStaticRouter(r *gin.Engine, apiPath string) *gin.Engine {
 	// Статические файлы
 	r.Static("/static", "internal/api/rest/static")
 
-	webHandler := handlers.NewWebHandler()
+	webHandler := handlers_common.NewWebHandler()
 
 	// Состояние апи
 	r.GET(apiPath+"/state", webHandler.AppState200)

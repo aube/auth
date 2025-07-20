@@ -1,10 +1,10 @@
-package handlers
+package handlers_user
 
 import (
 	"net/http"
 	"time"
 
-	"github.com/aube/auth/internal/api/rest/dto"
+	"github.com/aube/auth/internal/application/dto"
 	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/utils/logger"
 	"github.com/rs/zerolog"
@@ -36,7 +36,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	userDTO := appUser.CreateUserDTO{
+	userDTO := dto.CreateUserDTO{
 		Username: req.Username,
 		Password: req.Password,
 		Email:    req.Email,
@@ -69,7 +69,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	loginDTO := appUser.LoginDTO{
+	loginDTO := dto.LoginDTO{
 		Username: req.Username,
 		Password: req.Password,
 	}
@@ -100,19 +100,28 @@ func (h *UserHandler) Login(c *gin.Context) {
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	userID, exists := c.Get("userID")
+	uID, exists := c.Get("userID")
 	if !exists {
+		h.log.Debug().Msg("GetProfile not exists")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
+	userID, ok := uID.(int64)
+	if !ok {
+		h.log.Debug().Msg("GetProfile not ok")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
+		return
+	}
+
 	ctx := c.Request.Context()
-	user, err := h.userService.GetUserByID(ctx, userID.(int64))
+	user, err := h.userService.GetUserByID(ctx, userID)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("GetProfile")
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
+	h.log.Debug().Msg(user.Username)
 
 	c.JSON(http.StatusOK, user)
 }

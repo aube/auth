@@ -24,7 +24,7 @@ func NewServer(
 ) *Server {
 	router, apiGroup := NewRouter(apiPath)
 	SetupUserRouter(apiGroup, userService, jwtSecret)
-	SetupFilesRouter(apiGroup, fileService, uploadService)
+	SetupUploadsRouter(apiGroup, fileService, uploadService, jwtSecret)
 	SetupStaticRouter(router, apiPath)
 
 	return &Server{

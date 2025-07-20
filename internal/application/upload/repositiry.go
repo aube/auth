@@ -10,7 +10,7 @@ import (
 var ErrFileNotFound = errors.New("file not found")
 
 type UploadRepository interface {
-	Create(ctx context.Context, userID string, file *entities.File) error
-	ListByUserID(ctx context.Context, userID string) (*[]entities.Upload, error)
-	Delete(ctx context.Context, uuid string) error
+	Create(ctx context.Context, userID int64, upload *entities.Upload) error
+	ListByUserID(ctx context.Context, userID int64) (*entities.Uploads, error)
+	GetByUUID(ctx context.Context, uuid string, userID int64) (*entities.Upload, error)
 }

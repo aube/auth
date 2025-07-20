@@ -71,7 +71,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	return entities.NewUser(id, dbUser, email, pwd)
 }
 
-func (r *UserRepository) FindByID(ctx context.Context, userID int64) (*appUser.UserResponseDTO, error) {
+func (r *UserRepository) FindByID(ctx context.Context, userID int64) (*entities.User, error) {
 	var (
 		id     int64
 		dbUser string
@@ -87,7 +87,7 @@ func (r *UserRepository) FindByID(ctx context.Context, userID int64) (*appUser.U
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	return &appUser.UserResponseDTO{
+	return &entities.User{
 		ID:       id,
 		Username: dbUser,
 		Email:    email,

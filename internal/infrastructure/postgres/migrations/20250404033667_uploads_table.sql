@@ -6,7 +6,7 @@ CREATE TABLE uploads (
     user_id integer not null,
     uuid uuid not null,
     size bigint default 0,
-    type varchar not null,
+    content_type varchar not null,
     name varchar not null,
     description text default '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
