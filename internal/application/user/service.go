@@ -88,3 +88,13 @@ func (s *UserService) GetUserByID(ctx context.Context, id int64) (*dto.UserRespo
 
 	return dto.NewUserResponse(user), nil
 }
+
+func (s *UserService) Delete(ctx context.Context, id int64) error {
+	err := s.repo.Delete(ctx, id)
+	if err != nil {
+		s.log.Debug().Err(err).Msg("Delete")
+		return err
+	}
+
+	return nil
+}

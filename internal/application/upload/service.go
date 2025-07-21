@@ -47,6 +47,10 @@ func (s *UploadService) GetByUUID(ctx context.Context, uuid string, userID int64
 	return s.repo.GetByUUID(ctx, uuid, userID)
 }
 
+func (s *UploadService) Delete(ctx context.Context, uuid string, userID int64) error {
+	return s.repo.Delete(ctx, uuid, userID)
+}
+
 func (s *UploadService) CanBeDeleted(ctx context.Context, uuid string, userID int64) error {
 	_, err := s.repo.GetByUUID(ctx, uuid, userID)
 

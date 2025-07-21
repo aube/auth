@@ -103,6 +103,12 @@ func (r *FileSystemRepository) GetFileContent(ctx context.Context, uuid string) 
 	defer r.mu.RUnlock()
 
 	filePath := filepath.Join(r.storagePath, uuid)
+
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return nil, appFile.ErrFileNotFound
+	}
+
 	return os.Open(filePath)
 }
 

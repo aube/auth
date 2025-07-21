@@ -125,3 +125,29 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, user)
 }
+
+func (h *UserHandler) Delete(c *gin.Context) {
+	uID, exists := c.Get("userID")
+	if !exists {
+		h.log.Debug().Msg("GetProfile not exists")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userID, ok := uID.(int64)
+	if !ok {
+		h.log.Debug().Msg("GetProfile not ok")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	err := h.userService.Delete(ctx, userID)
+	if err != nil {
+		h.log.Debug().Err(err).Msg("Delete")
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

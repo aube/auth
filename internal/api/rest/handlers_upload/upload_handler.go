@@ -115,17 +115,21 @@ func (h *UploadHandler) DownloadFile(c *gin.Context) {
 
 	upload, err := h.UploadService.GetByUUID(c.Request.Context(), UUID, userID)
 	if err != nil {
-		h.log.Debug().Err(err).Msg("DownloadFile1")
-		if errors.Is(err, appFile.ErrFileNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		if errors.Is(err, appUpload.ErrFileNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "File not found in DB"})
 			return
 		}
+		h.log.Debug().Err(err).Msg("DownloadFile1")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file"})
 		return
 	}
 
 	content, err := h.FileService.Download(c.Request.Context(), UUID)
 	if err != nil {
+		if errors.Is(err, appFile.ErrFileNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "File not found on FS"})
+			return
+		}
 		h.log.Debug().Err(err).Msg("DownloadFile2")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
 		return
@@ -195,7 +199,7 @@ func (h *UploadHandler) DeleteFile(c *gin.Context) {
 		return
 	}
 
-	if err := h.UploadService.CanBeDeleted(c.Request.Context(), UUID, userID); err != nil {
+	if err := h.UploadService.Delete(c.Request.Context(), UUID, userID); err != nil {
 		h.log.Debug().Err(err).Msg("DeleteFile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID is can't be deleted"})
 		return

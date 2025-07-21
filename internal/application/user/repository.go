@@ -14,4 +14,5 @@ type UserRepository interface {
 	FindByUsername(ctx context.Context, username string) (*entities.User, error)
 	FindByID(ctx context.Context, id int64) (*entities.User, error)
 	Exists(ctx context.Context, username string) (bool, error)
+	Delete(ctx context.Context, id int64) error
 }

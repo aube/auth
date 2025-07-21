@@ -43,6 +43,7 @@ func SetupUserRouter(api *gin.RouterGroup, userService *appUser.UserService, jwt
 	{
 		authApi.GET("/profile", userHandler.GetProfile)
 		authApi.POST("/logout", userHandler.Logout)
+		authApi.DELETE("/profile", userHandler.Delete)
 	}
 }
 
@@ -53,10 +54,10 @@ func SetupUploadsRouter(api *gin.RouterGroup, fileService *appFile.FileService, 
 	authApi := api.Group("/")
 	authApi.Use(middlewares.AuthMiddleware(jwtSecret))
 	{
-		authApi.POST("/upload", uploadHandler.UploadFile)
-		authApi.GET("/download", uploadHandler.DownloadFile)
-		authApi.DELETE("/delete", uploadHandler.DeleteFile)
+		authApi.GET("/file", uploadHandler.DownloadFile)
 		authApi.GET("/uploads", uploadHandler.ListFiles)
+		authApi.POST("/upload", uploadHandler.UploadFile)
+		authApi.DELETE("/file", uploadHandler.DeleteFile)
 	}
 }
 

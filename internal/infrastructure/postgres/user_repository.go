@@ -17,9 +17,10 @@ import (
 
 const (
 	queryUserInsert       string = "INSERT INTO users (username, email, encrypted_password) VALUES ($1, $2, $3) RETURNING id"
-	queryUserSelectByName string = "SELECT id, username, email, encrypted_password as password FROM users WHERE username = $1"
-	queryUserSelectByID   string = "SELECT id, username, email FROM users WHERE id = $1"
-	queryUserCheckExists  string = "SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)"
+	queryUserSelectByName string = "SELECT id, username, email, encrypted_password as password FROM users WHERE username = $1 and deleted = false"
+	queryUserSelectByID   string = "SELECT id, username, email FROM users WHERE id = $1 and deleted = false"
+	queryUserCheckExists  string = "SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 and deleted = false)"
+	queryUserDelete       string = "UPDATE users SET deleted=true WHERE id = $1"
 )
 
 type UserRepository struct {
@@ -103,4 +104,16 @@ func (r *UserRepository) Exists(ctx context.Context, username string) (bool, err
 	}
 
 	return exists, nil
+}
+
+func (r *UserRepository) Delete(ctx context.Context, userID int64) error {
+
+	_, err := r.db.Query(ctx, queryUserDelete, userID)
+
+	if err != nil {
+		r.log.Debug().Err(err).Msg("Delete")
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	return nil
 }

@@ -3,7 +3,7 @@
 
 CREATE TABLE uploads (
     id serial not null primary key,
-    user_id integer not null,
+    user_id bigint not null,
     uuid uuid not null,
     size bigint default 0,
     content_type varchar not null,
