@@ -42,8 +42,8 @@ func (s *UploadService) RegisterUploadedFile(
 	return upload, nil
 }
 
-func (s *UploadService) ListByUserID(ctx context.Context, userID int64) (*entities.Uploads, error) {
-	return s.repo.ListByUserID(ctx, userID)
+func (s *UploadService) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Uploads, error) {
+	return s.repo.ListByUserID(ctx, userID, offset, limit)
 }
 
 func (s *UploadService) GetByUUID(ctx context.Context, uuid string, userID int64) (*entities.Upload, error) {

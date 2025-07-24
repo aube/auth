@@ -185,7 +185,10 @@ func (h *UploadHandler) ListFiles(c *gin.Context) {
 		return
 	}
 
-	uploads, err := h.UploadService.ListByUserID(c.Request.Context(), userID)
+	offset := c.GetInt("offset")
+	limit := c.GetInt("limit")
+
+	uploads, err := h.UploadService.ListByUserID(c.Request.Context(), userID, offset, limit)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("ListFiles")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list files"})

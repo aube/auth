@@ -17,7 +17,7 @@ import (
 
 const (
 	queryUploadInsert         string = "INSERT INTO uploads (user_id, uuid, size, name, category, content_type, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id"
-	queryUploadSelectByUserID string = "SELECT id, user_id, uuid, size, name, category, content_type, description, created_at FROM uploads WHERE user_id = $1 and deleted=false"
+	queryUploadSelectByUserID string = "SELECT id, user_id, uuid, size, name, category, content_type, description, created_at FROM uploads WHERE user_id = $1 and deleted=false OFFSET $2 LIMIT $3"
 	queryUploadGetByUUID      string = "SELECT id, user_id, size, name, category, content_type, description, created_at FROM uploads WHERE uuid = $1 and user_id=$2 and deleted=false"
 	queryUploadGetByName      string = "SELECT id, user_id, uuid, size, category, content_type, description, created_at FROM uploads WHERE name = $1 and user_id=$2 and deleted=false"
 	queryUploadDelete         string = "UPDATE uploads SET deleted=true WHERE uuid = $1 and user_id=$2"
@@ -67,9 +67,9 @@ func (r *UploadRepository) Create(
 
 // List returns all URL mappings for the current user from the database.
 // Returns an unauthorized error if no user ID is present in context.
-func (r *UploadRepository) ListByUserID(ctx context.Context, userID int64) (*entities.Uploads, error) {
+func (r *UploadRepository) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Uploads, error) {
 
-	rows, err := r.db.Query(ctx, queryUploadSelectByUserID, userID)
+	rows, err := r.db.Query(ctx, queryUploadSelectByUserID, userID, offset, limit)
 	if err != nil {
 		r.log.Debug().Err(err).Msg("ListByUserID1")
 		return nil, err

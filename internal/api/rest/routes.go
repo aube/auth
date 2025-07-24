@@ -53,6 +53,7 @@ func SetupUploadsRouter(api *gin.RouterGroup, fileService *appFile.FileService, 
 	// Защищённые маршруты
 	authApi := api.Group("/")
 	authApi.Use(middlewares.AuthMiddleware(jwtSecret))
+	authApi.Use(middlewares.OffsetMiddleware())
 	{
 		authApi.GET("/file", uploadHandler.DownloadFile)
 		authApi.GET("/uploads", uploadHandler.ListFiles)
