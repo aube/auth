@@ -1,7 +1,9 @@
 package handlers_upload
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -9,6 +11,7 @@ import (
 	"github.com/aube/auth/internal/application/dto"
 	appFile "github.com/aube/auth/internal/application/file"
 	appUpload "github.com/aube/auth/internal/application/upload"
+	"github.com/aube/auth/internal/domain/entities"
 	"github.com/aube/auth/internal/utils/logger"
 	"github.com/rs/zerolog"
 
@@ -48,6 +51,7 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 	}
 
 	description := c.PostForm("description")
+	category := c.PostForm("category")
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
@@ -56,9 +60,16 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 		return
 	}
 
-	uploadingFile, err := fileHeader.Open()
+	err = h.cleanupBeforeCreate(c.Request.Context(), fileHeader.Filename, userID)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("UploadFile2")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file"})
+		return
+	}
+
+	uploadingFile, err := fileHeader.Open()
+	if err != nil {
+		h.log.Debug().Err(err).Msg("UploadFile3")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file"})
 		return
 	}
@@ -70,7 +81,7 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 		uploadingFile,
 	)
 	if err != nil {
-		h.log.Debug().Err(err).Msg("UploadFile3")
+		h.log.Debug().Err(err).Msg("UploadFile4")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload file"})
 		return
 	}
@@ -80,11 +91,12 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 		userID,
 		file,
 		fileHeader.Filename,
+		category,
 		fileHeader.Header.Get("Content-Type"),
 		description,
 	)
 	if err != nil {
-		h.log.Debug().Err(err).Msg("UploadFile4")
+		h.log.Debug().Err(err).Msg("UploadFile5")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write upload file into DB"})
 		return
 	}
@@ -108,12 +120,22 @@ func (h *UploadHandler) DownloadFile(c *gin.Context) {
 	}
 
 	UUID := c.Query("uuid")
-	if UUID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID is required"})
+	name := c.Query("name")
+
+	if UUID == "" && name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID or Name is required"})
 		return
 	}
 
-	upload, err := h.UploadService.GetByUUID(c.Request.Context(), UUID, userID)
+	var upload *entities.Upload
+	var err error
+
+	if UUID != "" {
+		upload, err = h.UploadService.GetByUUID(c.Request.Context(), UUID, userID)
+	} else {
+		upload, err = h.UploadService.GetByName(c.Request.Context(), name, userID)
+	}
+	fmt.Println(upload)
 	if err != nil {
 		if errors.Is(err, appUpload.ErrFileNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "File not found in DB"})
@@ -124,7 +146,7 @@ func (h *UploadHandler) DownloadFile(c *gin.Context) {
 		return
 	}
 
-	content, err := h.FileService.Download(c.Request.Context(), UUID)
+	content, err := h.FileService.Download(c.Request.Context(), upload.UUID)
 	if err != nil {
 		if errors.Is(err, appFile.ErrFileNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "File not found on FS"})
@@ -216,4 +238,23 @@ func (h *UploadHandler) DeleteFile(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (h *UploadHandler) cleanupBeforeCreate(ctx context.Context, name string, userID int64) error {
+
+	upload, err := h.UploadService.GetByName(ctx, name, userID)
+
+	if err != nil {
+		return nil // file not found
+	}
+
+	if err := h.UploadService.DeleteForce(ctx, upload.UUID, userID); err != nil {
+		return err
+	}
+
+	if err := h.FileService.Delete(ctx, upload.UUID); err != nil {
+		return err
+	}
+
+	return nil
 }

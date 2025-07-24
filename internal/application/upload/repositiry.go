@@ -13,5 +13,7 @@ type UploadRepository interface {
 	Create(ctx context.Context, userID int64, upload *entities.Upload) error
 	ListByUserID(ctx context.Context, userID int64) (*entities.Uploads, error)
 	GetByUUID(ctx context.Context, uuid string, userID int64) (*entities.Upload, error)
+	GetByName(ctx context.Context, name string, userID int64) (*entities.Upload, error)
 	Delete(ctx context.Context, uuid string, userID int64) error
+	DeleteForce(ctx context.Context, uuid string, userID int64) error
 }

@@ -25,10 +25,13 @@ func (s *UploadService) RegisterUploadedFile(
 	ctx context.Context,
 	userID int64,
 	file *entities.File,
-	name, contentType, description string,
+	name,
+	category,
+	contentType,
+	description string,
 ) (*entities.Upload, error) {
 
-	upload := entities.NewUpload(file, 0, userID, name, contentType, description, time.Now())
+	upload := entities.NewUpload(file, 0, userID, name, category, contentType, description, time.Now())
 
 	err := s.repo.Create(ctx, userID, upload)
 	if err != nil {
@@ -47,8 +50,16 @@ func (s *UploadService) GetByUUID(ctx context.Context, uuid string, userID int64
 	return s.repo.GetByUUID(ctx, uuid, userID)
 }
 
+func (s *UploadService) GetByName(ctx context.Context, name string, userID int64) (*entities.Upload, error) {
+	return s.repo.GetByName(ctx, name, userID)
+}
+
 func (s *UploadService) Delete(ctx context.Context, uuid string, userID int64) error {
 	return s.repo.Delete(ctx, uuid, userID)
+}
+
+func (s *UploadService) DeleteForce(ctx context.Context, uuid string, userID int64) error {
+	return s.repo.DeleteForce(ctx, uuid, userID)
 }
 
 func (s *UploadService) CanBeDeleted(ctx context.Context, uuid string, userID int64) error {

@@ -11,6 +11,11 @@ import (
 
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// fmt.Println("DEBUG: Authenticated user ID:", 11)
+		// c.Set("userID", int64(11))
+		// c.Next()
+		// return
+
 		authHeader := c.GetHeader("Authorization")
 
 		if authHeader == "" {
