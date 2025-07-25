@@ -188,19 +188,35 @@ func (h *UploadHandler) ListFiles(c *gin.Context) {
 	offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
 
-	uploads, err := h.UploadService.ListByUserID(c.Request.Context(), userID, offset, limit)
+	uploads, pagination, err := h.UploadService.ListByUserID(c.Request.Context(), userID, offset, limit)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("ListFiles")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list files"})
 		return
 	}
 
-	response := make([]dto.UploadResponse, len(*uploads))
+	rows := make([]dto.UploadResponse, len(*uploads))
 	for i, upload := range *uploads {
-		response[i] = dto.NewUploadResponse(&upload)
+		rows[i] = dto.NewUploadResponse(&upload)
 	}
 
-	c.JSON(http.StatusOK, response)
+	type resp struct {
+		rows       []dto.UploadResponse
+		pagination *dto.Pagination
+	}
+
+	fmt.Println(rows)
+	fmt.Println(pagination)
+	fmt.Println(pagination)
+	fmt.Println(pagination)
+	c.JSON(http.StatusOK, gin.H{
+		"rows":       rows,
+		"pagination": pagination,
+	})
+	// c.JSON(http.StatusOK, &resp{
+	// 	rows:       rows,
+	// 	pagination: pagination,
+	// })
 }
 
 func (h *UploadHandler) DeleteFile(c *gin.Context) {

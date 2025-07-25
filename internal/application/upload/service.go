@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/aube/auth/internal/application/dto"
 	"github.com/aube/auth/internal/domain/entities"
 	"github.com/aube/auth/internal/utils/logger"
 	"github.com/rs/zerolog"
@@ -42,7 +43,7 @@ func (s *UploadService) RegisterUploadedFile(
 	return upload, nil
 }
 
-func (s *UploadService) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Uploads, error) {
+func (s *UploadService) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Uploads, *dto.Pagination, error) {
 	return s.repo.ListByUserID(ctx, userID, offset, limit)
 }
 

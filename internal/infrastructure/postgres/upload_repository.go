@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
+	"github.com/aube/auth/internal/application/dto"
 	appUpload "github.com/aube/auth/internal/application/upload"
 	"github.com/aube/auth/internal/domain/entities"
 	"github.com/aube/auth/internal/utils/logger"
@@ -16,12 +18,13 @@ import (
 )
 
 const (
-	queryUploadInsert         string = "INSERT INTO uploads (user_id, uuid, size, name, category, content_type, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id"
-	queryUploadSelectByUserID string = "SELECT id, user_id, uuid, size, name, category, content_type, description, created_at FROM uploads WHERE user_id = $1 and deleted=false OFFSET $2 LIMIT $3"
-	queryUploadGetByUUID      string = "SELECT id, user_id, size, name, category, content_type, description, created_at FROM uploads WHERE uuid = $1 and user_id=$2 and deleted=false"
-	queryUploadGetByName      string = "SELECT id, user_id, uuid, size, category, content_type, description, created_at FROM uploads WHERE name = $1 and user_id=$2 and deleted=false"
-	queryUploadDelete         string = "UPDATE uploads SET deleted=true WHERE uuid = $1 and user_id=$2"
-	queryUploadDeleteForce    string = "DELETE uploads WHERE uuid = $1 and user_id=$2"
+	queryUploadInsert              string = "INSERT INTO uploads (user_id, uuid, size, name, category, content_type, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id"
+	queryUploadSelectByUserID      string = "SELECT id, user_id, uuid, size, name, category, content_type, description, created_at FROM uploads WHERE user_id = $1 and deleted=false OFFSET $2 LIMIT $3"
+	queryUploadSelectByUserIDTotal string = "SELECT count(*) total FROM uploads WHERE user_id = $1 and deleted=false"
+	queryUploadGetByUUID           string = "SELECT id, user_id, size, name, category, content_type, description, created_at FROM uploads WHERE uuid = $1 and user_id=$2 and deleted=false"
+	queryUploadGetByName           string = "SELECT id, user_id, uuid, size, category, content_type, description, created_at FROM uploads WHERE name = $1 and user_id=$2 and deleted=false"
+	queryUploadDelete              string = "UPDATE uploads SET deleted=true WHERE uuid = $1 and user_id=$2"
+	queryUploadDeleteForce         string = "DELETE uploads WHERE uuid = $1 and user_id=$2"
 )
 
 type UploadRepository struct {
@@ -67,12 +70,12 @@ func (r *UploadRepository) Create(
 
 // List returns all URL mappings for the current user from the database.
 // Returns an unauthorized error if no user ID is present in context.
-func (r *UploadRepository) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Uploads, error) {
+func (r *UploadRepository) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Uploads, *dto.Pagination, error) {
 
 	rows, err := r.db.Query(ctx, queryUploadSelectByUserID, userID, offset, limit)
 	if err != nil {
 		r.log.Debug().Err(err).Msg("ListByUserID1")
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
@@ -104,7 +107,7 @@ func (r *UploadRepository) ListByUserID(ctx context.Context, userID int64, offse
 		)
 		if err != nil {
 			r.log.Error().Err(err).Msg("Failed to scan upload row")
-			return nil, fmt.Errorf("failed to scan upload row: %w", err)
+			return nil, nil, fmt.Errorf("failed to scan upload row: %w", err)
 		}
 
 		file := entities.NewFile(uuid, "", size)
@@ -123,10 +126,25 @@ func (r *UploadRepository) ListByUserID(ctx context.Context, userID int64, offse
 
 	if err = rows.Err(); err != nil {
 		r.log.Debug().Err(err).Msg("ListByUserID2")
-		return nil, fmt.Errorf("error after iterating upload rows: %w", err)
+		return nil, nil, fmt.Errorf("error after iterating upload rows: %w", err)
 	}
 
-	return &uploads, nil
+	var total int
+	err = r.db.QueryRow(ctx, queryUploadSelectByUserIDTotal, userID).Scan(&total)
+
+	if err != nil {
+		r.log.Debug().Err(err).Msg("GetTotals")
+		return nil, nil, fmt.Errorf("failed to get totals: %w", err)
+	}
+
+	page := float64(offset) / float64(limit)
+	pagination := dto.Pagination{
+		Total: total,
+		Page:  int(math.Round(page)) + 1,
+		Size:  limit,
+	}
+
+	return &uploads, &pagination, nil
 }
 
 func (r *UploadRepository) GetByUUID(ctx context.Context, uuid string, userID int64) (*entities.Upload, error) {
