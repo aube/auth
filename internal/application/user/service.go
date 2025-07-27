@@ -23,7 +23,7 @@ func NewUserService(repo UserRepository) *UserService {
 	}
 }
 
-func (s *UserService) Register(ctx context.Context, userDTO dto.CreateUserDTO) (*dto.UserResponse, error) {
+func (s *UserService) Register(ctx context.Context, userDTO dto.RegisterRequest) (*dto.UserResponse, error) {
 
 	// Проверяем, существует ли пользователь
 	exists, err := s.repo.Exists(ctx, userDTO.Username)
@@ -63,7 +63,7 @@ func (s *UserService) Register(ctx context.Context, userDTO dto.CreateUserDTO) (
 	return dto.NewUserResponse(user), nil
 }
 
-func (s *UserService) Login(ctx context.Context, userDTO dto.LoginDTO) (*dto.UserResponse, error) {
+func (s *UserService) Login(ctx context.Context, userDTO dto.LoginRequest) (*dto.UserResponse, error) {
 	user, err := s.repo.FindByUsername(ctx, userDTO.Username)
 	if err != nil {
 		s.log.Debug().Err(err).Msg("Login")

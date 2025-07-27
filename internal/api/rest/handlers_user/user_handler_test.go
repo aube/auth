@@ -17,12 +17,12 @@ type MockUserService struct {
 	mock.Mock
 }
 
-func (m *MockUserService) Register(ctx context.Context, user dto.CreateUserDTO) (*dto.UserResponse, error) {
+func (m *MockUserService) Register(ctx context.Context, user dto.RegisterRequest) (*dto.UserResponse, error) {
 	args := m.Called(ctx, user)
 	return args.Get(0).(*dto.UserResponse), args.Error(1)
 }
 
-func (m *MockUserService) Login(ctx context.Context, credentials dto.LoginDTO) (*dto.UserResponse, error) {
+func (m *MockUserService) Login(ctx context.Context, credentials dto.LoginRequest) (*dto.UserResponse, error) {
 	args := m.Called(ctx, credentials)
 	return args.Get(0).(*dto.UserResponse), args.Error(1)
 }

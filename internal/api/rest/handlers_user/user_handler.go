@@ -16,8 +16,8 @@ import (
 type UserService interface {
 	Delete(ctx context.Context, id int64) error
 	GetUserByID(ctx context.Context, id int64) (*dto.UserResponse, error)
-	Login(ctx context.Context, userDTO dto.LoginDTO) (*dto.UserResponse, error)
-	Register(ctx context.Context, userDTO dto.CreateUserDTO) (*dto.UserResponse, error)
+	Login(ctx context.Context, userDTO dto.LoginRequest) (*dto.UserResponse, error)
+	Register(ctx context.Context, userDTO dto.RegisterRequest) (*dto.UserResponse, error)
 }
 
 type UserHandler interface {
@@ -51,7 +51,7 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	userDTO := dto.CreateUserDTO(req)
+	userDTO := dto.RegisterRequest(req)
 
 	createdUser, err := h.userService.Register(ctx, userDTO)
 	if err != nil {
@@ -80,12 +80,12 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	loginDTO := dto.LoginDTO{
+	LoginRequest := dto.LoginRequest{
 		Username: req.Username,
 		Password: req.Password,
 	}
 
-	userEntity, err := h.userService.Login(ctx, loginDTO)
+	userEntity, err := h.userService.Login(ctx, LoginRequest)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("Login2")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
