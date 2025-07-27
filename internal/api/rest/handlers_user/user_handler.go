@@ -1,11 +1,11 @@
 package handlers_user
 
 import (
+	"context"
 	"net/http"
 	"time"
 
 	"github.com/aube/auth/internal/application/dto"
-	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/utils/logger"
 	"github.com/rs/zerolog"
 
@@ -13,21 +13,36 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type UserHandler struct {
-	userService *appUser.UserService
+type UserService interface {
+	Delete(ctx context.Context, id int64) error
+	GetUserByID(ctx context.Context, id int64) (*dto.UserResponse, error)
+	Login(ctx context.Context, userDTO dto.LoginDTO) (*dto.UserResponse, error)
+	Register(ctx context.Context, userDTO dto.CreateUserDTO) (*dto.UserResponse, error)
+}
+
+type UserHandler interface {
+	Delete(c *gin.Context)
+	GetProfile(c *gin.Context)
+	Login(c *gin.Context)
+	Logout(c *gin.Context)
+	Register(c *gin.Context)
+}
+
+type Handler struct {
+	userService UserService
 	jwtSecret   []byte
 	log         zerolog.Logger
 }
 
-func NewUserHandler(userService *appUser.UserService, jwtSecret string) *UserHandler {
-	return &UserHandler{
+func NewUserHandler(userService UserService, jwtSecret string) UserHandler {
+	return &Handler{
 		userService: userService,
 		jwtSecret:   []byte(jwtSecret),
 		log:         logger.Get().With().Str("handlers", "user_handler").Logger(),
 	}
 }
 
-func (h *UserHandler) Register(c *gin.Context) {
+func (h *Handler) Register(c *gin.Context) {
 	var req dto.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.log.Debug().Err(err).Msg("Register1")
@@ -36,11 +51,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	userDTO := dto.CreateUserDTO{
-		Username: req.Username,
-		Password: req.Password,
-		Email:    req.Email,
-	}
+	userDTO := dto.CreateUserDTO(req)
 
 	createdUser, err := h.userService.Register(ctx, userDTO)
 	if err != nil {
@@ -52,13 +63,13 @@ func (h *UserHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, createdUser)
 }
 
-func (h *UserHandler) Logout(c *gin.Context) {
+func (h *Handler) Logout(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "successfully logged out"})
 
 }
 
-func (h *UserHandler) Login(c *gin.Context) {
+func (h *Handler) Login(c *gin.Context) {
 
 	var req dto.LoginRequest
 
@@ -99,7 +110,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	})
 }
 
-func (h *UserHandler) GetProfile(c *gin.Context) {
+func (h *Handler) GetProfile(c *gin.Context) {
 	uID, exists := c.Get("userID")
 	if !exists {
 		h.log.Debug().Msg("GetProfile not exists")
@@ -126,7 +137,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-func (h *UserHandler) Delete(c *gin.Context) {
+func (h *Handler) Delete(c *gin.Context) {
 	uID, exists := c.Get("userID")
 	if !exists {
 		h.log.Debug().Msg("GetProfile not exists")

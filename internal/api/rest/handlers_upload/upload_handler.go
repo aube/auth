@@ -18,16 +18,38 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// UploadHandler обрабатывает HTTP запросы для работы с файлами
-type UploadHandler struct {
-	FileService   *appFile.FileService
-	UploadService *appUpload.UploadService
+type FileService interface {
+	Delete(ctx context.Context, id string) error
+	Download(ctx context.Context, uuid string) (io.ReadCloser, error)
+	Upload(ctx context.Context, size int64, data io.Reader) (*entities.File, error)
+}
+
+type UploadService interface {
+	Delete(ctx context.Context, uuid string, userID int64) error
+	DeleteForce(ctx context.Context, uuid string, userID int64) error
+	GetByName(ctx context.Context, name string, userID int64) (*entities.Upload, error)
+	GetByUUID(ctx context.Context, uuid string, userID int64) (*entities.Upload, error)
+	ListByUserID(ctx context.Context, userID int64, offset int, limit int) (*entities.Uploads, *dto.Pagination, error)
+	RegisterUploadedFile(ctx context.Context, userID int64, file *entities.File, name string, category string, contentType string, description string) (*entities.Upload, error)
+}
+
+type UploadHandler interface {
+	DeleteFile(c *gin.Context)
+	DownloadFile(c *gin.Context)
+	ListFiles(c *gin.Context)
+	UploadFile(c *gin.Context)
+}
+
+// Этот Handler обрабатывает HTTP запросы для работы с файлами
+type Handler struct {
+	FileService   FileService
+	UploadService UploadService
 	log           zerolog.Logger
 }
 
-// NewUploadHandler создает новый экземпляр UploadHandler
-func NewUploadHandler(FileService *appFile.FileService, UploadService *appUpload.UploadService) *UploadHandler {
-	return &UploadHandler{
+// NewHandler создает новый экземпляр Handler
+func NewUploadHandler(FileService FileService, UploadService UploadService) *Handler {
+	return &Handler{
 		FileService:   FileService,
 		UploadService: UploadService,
 		log:           logger.Get().With().Str("handlers", "file_handler").Logger(),
@@ -35,7 +57,7 @@ func NewUploadHandler(FileService *appFile.FileService, UploadService *appUpload
 }
 
 // UploadFile обрабатывает загрузку файла
-func (h *UploadHandler) UploadFile(c *gin.Context) {
+func (h *Handler) UploadFile(c *gin.Context) {
 	uID, exists := c.Get("userID")
 	if !exists {
 		h.log.Debug().Msg("GetProfile not exists")
@@ -104,7 +126,7 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 	c.JSON(http.StatusCreated, dto.NewUploadResponse(upload))
 }
 
-func (h *UploadHandler) DownloadFile(c *gin.Context) {
+func (h *Handler) DownloadFile(c *gin.Context) {
 	uID, exists := c.Get("userID")
 	if !exists {
 		h.log.Debug().Msg("GetProfile not exists")
@@ -170,7 +192,7 @@ func (h *UploadHandler) DownloadFile(c *gin.Context) {
 	})
 }
 
-func (h *UploadHandler) ListFiles(c *gin.Context) {
+func (h *Handler) ListFiles(c *gin.Context) {
 	uID, exists := c.Get("userID")
 	if !exists {
 		h.log.Debug().Msg("GetProfile not exists")
@@ -206,7 +228,7 @@ func (h *UploadHandler) ListFiles(c *gin.Context) {
 	})
 }
 
-func (h *UploadHandler) DeleteFile(c *gin.Context) {
+func (h *Handler) DeleteFile(c *gin.Context) {
 	uID, exists := c.Get("userID")
 	if !exists {
 		h.log.Debug().Msg("GetProfile not exists")
@@ -226,7 +248,6 @@ func (h *UploadHandler) DeleteFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID is required"})
 		return
 	}
-
 	if err := h.UploadService.Delete(c.Request.Context(), UUID, userID); err != nil {
 		h.log.Debug().Err(err).Msg("DeleteFile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID is can't be deleted"})
@@ -242,11 +263,10 @@ func (h *UploadHandler) DeleteFile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete file"})
 		return
 	}
-
 	c.Status(http.StatusNoContent)
 }
 
-func (h *UploadHandler) cleanupBeforeCreate(ctx context.Context, name string, userID int64) error {
+func (h *Handler) cleanupBeforeCreate(ctx context.Context, name string, userID int64) error {
 
 	upload, err := h.UploadService.GetByName(ctx, name, userID)
 

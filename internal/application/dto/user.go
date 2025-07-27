@@ -8,7 +8,7 @@ type CreateUserDTO struct {
 	Password string `json:"password" binding:"required"`
 }
 
-type UserResponseDTO struct {
+type UserResponse struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
@@ -31,8 +31,8 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func NewUserResponse(user *entities.User) *UserResponseDTO {
-	return &UserResponseDTO{
+func NewUserResponse(user *entities.User) *UserResponse {
+	return &UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
