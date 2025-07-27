@@ -10,7 +10,7 @@ type User struct {
 	ID       int64
 	Username string
 	Email    string
-	password *valueobjects.Password
+	Password *valueobjects.Password
 }
 
 func NewUser(id int64, username string, email string, password *valueobjects.Password) (*User, error) {
@@ -30,7 +30,7 @@ func NewUser(id int64, username string, email string, password *valueobjects.Pas
 		ID:       id,
 		Username: username,
 		Email:    email,
-		password: password,
+		Password: password,
 	}, nil
 }
 
@@ -39,14 +39,14 @@ func (u *User) SetPassword(newPassword *valueobjects.Password) error {
 		return errors.New("password cannot be nil")
 	}
 
-	u.password = newPassword
+	u.Password = newPassword
 	return nil
 }
 
 func (u *User) PasswordMatches(plainPassword string) bool {
-	return u.password.Matches(plainPassword)
+	return u.Password.Matches(plainPassword)
 }
 
 func (u *User) GetHashedPassword() string {
-	return u.password.String()
+	return u.Password.String()
 }

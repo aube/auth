@@ -73,8 +73,3 @@ func (s *UploadService) CanBeDeleted(ctx context.Context, uuid string, userID in
 
 	return nil
 }
-
-// func (s *UploadService) Create(ctx context.Context, file *entities.File, description string) (*entities.Upload, error) {
-// 	upload := entities.NewUpload(file, description)
-// 	return s.repo.Create(ctx, upload)
-// }
