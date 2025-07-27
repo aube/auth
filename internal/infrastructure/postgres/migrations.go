@@ -28,6 +28,7 @@ func runPostgresMigrations(pool *pgxpool.Pool) error {
 		return err
 	}
 
+	// // Откат всех миграций
 	// log.Debug().Msg("goose.Down migrations")
 	// if err := goose.DownTo(stdDB, "migrations", 0); err != nil {
 	// 	return err

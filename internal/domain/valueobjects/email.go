@@ -29,7 +29,6 @@ func isValidEmail(email string) bool {
 	if len(email) < 3 || len(email) > 254 {
 		return false
 	}
-
 	// Use Go's built-in email parser
 	_, err := mail.ParseAddress(email)
 	return err == nil
