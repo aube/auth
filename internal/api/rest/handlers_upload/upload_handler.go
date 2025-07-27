@@ -200,23 +200,10 @@ func (h *UploadHandler) ListFiles(c *gin.Context) {
 		rows[i] = dto.NewUploadResponse(&upload)
 	}
 
-	type resp struct {
-		rows       []dto.UploadResponse
-		pagination *dto.Pagination
-	}
-
-	fmt.Println(rows)
-	fmt.Println(pagination)
-	fmt.Println(pagination)
-	fmt.Println(pagination)
 	c.JSON(http.StatusOK, gin.H{
 		"rows":       rows,
 		"pagination": pagination,
 	})
-	// c.JSON(http.StatusOK, &resp{
-	// 	rows:       rows,
-	// 	pagination: pagination,
-	// })
 }
 
 func (h *UploadHandler) DeleteFile(c *gin.Context) {

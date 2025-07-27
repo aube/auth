@@ -10,7 +10,7 @@ func PaginationMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		page := 1
 		size := 10
-		maxSize := 100 + 1 // Maximum allowed page size +1 for unlimited scroll
+		maxSize := 1000 + 1 // Maximum allowed page size +1 for unlimited scroll
 
 		if pStr := c.Query("page"); pStr != "" {
 			if p, err := strconv.Atoi(pStr); err == nil && p > 0 {
