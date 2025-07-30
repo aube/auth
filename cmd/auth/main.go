@@ -7,6 +7,7 @@ import (
 
 	"github.com/aube/auth/internal/api/rest"
 	appFile "github.com/aube/auth/internal/application/file"
+	appImage "github.com/aube/auth/internal/application/image"
 	appUpload "github.com/aube/auth/internal/application/upload"
 	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/infrastructure/fs"
@@ -19,6 +20,7 @@ func main() {
 	ctx := context.Background()
 	viper.SetConfigFile(".env")
 	viper.SetDefault("STORAGE_PATH", "./_storage")
+	viper.SetDefault("IMAGES_STORAGE_PATH", "./_images")
 	viper.SetDefault("API_PATH", "/api/v1")
 	viper.SetDefault("LOG_LEVEL", "debug")
 	viper.ReadInConfig()
@@ -42,18 +44,27 @@ func main() {
 	}
 	defer dbPool.Close()
 
-	// Инициализация хранилища файлов
+	// Инициализация хранилищ файлов
 	storagePath := viper.Get("STORAGE_PATH").(string)
 	fsRepo, err := fs.NewFileSystemRepository(storagePath)
 	if err != nil {
 		log.Fatalf("Failed to initialize file repository: %v", err)
 	}
+	imgStoragePath := viper.Get("IMAGES_STORAGE_PATH").(string)
+	imgRepo, err := fs.NewFileSystemRepository(imgStoragePath)
+	if err != nil {
+		log.Fatalf("Failed to initialize images repository: %v", err)
+	}
 
 	fileService := appFile.NewFileService(fsRepo)
+	imgFileService := appFile.NewFileService(imgRepo)
 
 	uploadRepo := postgres.NewUploadRepository(dbPool)
+	imageRepo := postgres.NewImageRepository(dbPool)
 	userRepo := postgres.NewUserRepository(dbPool)
+
 	uploadService := appUpload.NewUploadService(uploadRepo)
+	imageService := appImage.NewImageService(imageRepo)
 	userService := appUser.NewUserService(userRepo)
 
 	// Запуск сервера
@@ -63,7 +74,15 @@ func main() {
 	}
 	apiPath := viper.Get("API_PATH").(string)
 
-	server := rest.NewServer(userService, fileService, uploadService, jwtSecret, apiPath)
+	server := rest.NewServer(
+		userService,
+		fileService,
+		imgFileService,
+		uploadService,
+		imageService,
+		jwtSecret,
+		apiPath,
+	)
 	if err := server.Start(); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
