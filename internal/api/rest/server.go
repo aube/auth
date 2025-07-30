@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	appFile "github.com/aube/auth/internal/application/file"
+	appImage "github.com/aube/auth/internal/application/image"
 	appUpload "github.com/aube/auth/internal/application/upload"
 	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/gin-gonic/gin"
@@ -18,13 +19,16 @@ type Server struct {
 func NewServer(
 	userService *appUser.UserService,
 	fileService *appFile.FileService,
+	imgFileService *appFile.FileService,
 	uploadService *appUpload.UploadService,
+	imageService *appImage.ImageService,
 	jwtSecret string,
 	apiPath string,
 ) *Server {
 	router, apiGroup := NewRouter(apiPath)
 	SetupUserRouter(apiGroup, userService, jwtSecret)
 	SetupUploadsRouter(apiGroup, fileService, uploadService, jwtSecret)
+	SetupImagesRouter(apiGroup, imgFileService, imageService, jwtSecret)
 	SetupStaticRouter(router, apiPath)
 
 	return &Server{
