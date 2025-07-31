@@ -1,6 +1,8 @@
 package dto
 
-import "github.com/aube/auth/internal/domain/entities"
+import (
+	"github.com/aube/auth/internal/domain/entities"
+)
 
 type RegisterRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=50"`

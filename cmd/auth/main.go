@@ -8,6 +8,7 @@ import (
 	"github.com/aube/auth/internal/api/rest"
 	appFile "github.com/aube/auth/internal/application/file"
 	appImage "github.com/aube/auth/internal/application/image"
+	appPage "github.com/aube/auth/internal/application/page"
 	appUpload "github.com/aube/auth/internal/application/upload"
 	appUser "github.com/aube/auth/internal/application/user"
 	"github.com/aube/auth/internal/infrastructure/fs"
@@ -62,10 +63,12 @@ func main() {
 	uploadRepo := postgres.NewUploadRepository(dbPool)
 	imageRepo := postgres.NewImageRepository(dbPool)
 	userRepo := postgres.NewUserRepository(dbPool)
+	pageRepo := postgres.NewPageRepository(dbPool)
 
 	uploadService := appUpload.NewUploadService(uploadRepo)
 	imageService := appImage.NewImageService(imageRepo)
 	userService := appUser.NewUserService(userRepo)
+	pageService := appPage.NewPageService(pageRepo)
 
 	// Запуск сервера
 	jwtSecret := viper.Get("JWT_SECRET").(string)
@@ -76,6 +79,7 @@ func main() {
 
 	server := rest.NewServer(
 		userService,
+		pageService,
 		fileService,
 		imgFileService,
 		uploadService,

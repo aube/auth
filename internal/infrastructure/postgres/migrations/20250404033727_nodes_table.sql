@@ -8,7 +8,7 @@ CREATE TABLE nodes (
 
     name varchar(256) NOT NULL,
     menu_title varchar(256) NOT NULL default '',
-    path varchar(512) NOT NULL default '',
+    path varchar(512) NOT NULL default '/',
     
     parent INTEGER NOT NULL DEFAULT '0',
     sort smallint not null default '0',
