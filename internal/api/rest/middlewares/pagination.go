@@ -1,3 +1,4 @@
+// Package middlewares provides gin middleware.
 package middlewares
 
 import (
@@ -6,6 +7,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// PaginationMiddleware parses pagination query parameters (page, size) and calculates offset/limit.
+// Returns: Gin middleware function.
+// Defaults:
+//   - page: 1
+//   - size: 10
+//   - maxSize: 1000
+//
+// Behavior:
+//   - Sets "offset" and "limit" in the request context.
+//   - Ignores invalid values.
 func PaginationMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		page := 1

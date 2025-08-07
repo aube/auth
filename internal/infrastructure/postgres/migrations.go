@@ -1,3 +1,4 @@
+// Package postgres provides PostgreSQL database implementations.
 package postgres
 
 import (
@@ -14,6 +15,14 @@ import (
 //go:embed migrations/*.sql
 var embedPostgresMigrations embed.FS
 
+// runPostgresMigrations executes database migrations.
+// pool: Database connection pool
+// Returns: error on migration failure
+// Features:
+//   - Uses embedded SQL files
+//   - Supports both up and down migrations (commented)
+//   - Logs migration steps
+//   - Automatic PostgreSQL dialect detection
 func runPostgresMigrations(pool *pgxpool.Pool) error {
 	log := logger.Get().With().Str("migrations", "runPostgresMigrations").Logger()
 

@@ -62,7 +62,7 @@ type MockImageService struct {
 	mock.Mock
 }
 
-func (m *MockImageService) RegisterImageedFile(ctx context.Context, userID int64, file *entities.File, name, category, contentType, description string) (*entities.Image, error) {
+func (m *MockImageService) RegisterUploadedImage(ctx context.Context, userID int64, file *entities.File, name, category, contentType, description string) (*entities.Image, error) {
 	args := m.Called(ctx, userID, file, name, category, contentType, description)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -86,7 +86,7 @@ func (m *MockImageService) GetByName(ctx context.Context, name string, userID in
 	return args.Get(0).(*entities.Image), args.Error(1)
 }
 
-func (m *MockImageService) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Images, *dto.Pagination, error) {
+func (m *MockImageService) ListByUserID(ctx context.Context, userID int64, offset, limit int, params map[string]any) (*entities.Images, *dto.Pagination, error) {
 	args := m.Called(ctx, userID, offset, limit)
 	return args.Get(0).(*entities.Images), args.Get(1).(*dto.Pagination), args.Error(2)
 }

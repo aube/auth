@@ -1,3 +1,4 @@
+// Package postgres implements UploadRepository for PostgreSQL.
 package postgres
 
 import (
@@ -5,12 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/aube/auth/internal/application/dto"
 	appUpload "github.com/aube/auth/internal/application/upload"
 	"github.com/aube/auth/internal/domain/entities"
 	"github.com/aube/auth/internal/utils/logger"
+	"github.com/aube/auth/internal/utils/sql"
 	"github.com/rs/zerolog"
 
 	"github.com/jackc/pgx/v5"
@@ -19,19 +22,50 @@ import (
 
 const (
 	queryUploadInsert              string = "INSERT INTO uploads (user_id, uuid, size, name, category, content_type, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id"
-	queryUploadSelectByUserID      string = "SELECT id, user_id, uuid, size, name, category, content_type, description, created_at FROM uploads WHERE user_id = $1 and deleted=false OFFSET $2 LIMIT $3"
-	queryUploadSelectByUserIDTotal string = "SELECT count(*) total FROM uploads WHERE user_id = $1 and deleted=false"
+	queryUploadSelectByUserID      string = "SELECT id, user_id, uuid, size, name, category, content_type, description, created_at FROM uploads %WHERE% OFFSET $1 LIMIT $2"
+	queryUploadSelectByUserIDTotal string = "SELECT count(*) total FROM uploads %WHERE%"
 	queryUploadGetByUUID           string = "SELECT id, user_id, size, name, category, content_type, description, created_at FROM uploads WHERE uuid = $1 and user_id=$2 and deleted=false"
 	queryUploadGetByName           string = "SELECT id, user_id, uuid, size, category, content_type, description, created_at FROM uploads WHERE name = $1 and user_id=$2 and deleted=false"
 	queryUploadDelete              string = "UPDATE uploads SET deleted=true WHERE uuid = $1 and user_id=$2"
 	queryUploadDeleteForce         string = "DELETE uploads WHERE uuid = $1 and user_id=$2"
 )
 
+// UploadRepository provides PostgreSQL storage for upload metadata.
+// Features:
+//   - Soft deletion support (deleted flag)
+//   - Owner-based access control
+//   - Paginated listings
+//   - Atomic operations
 type UploadRepository struct {
 	db  *pgxpool.Pool
 	log zerolog.Logger
 }
 
+// NewUploadRepository creates a new PostgreSQL upload repository.
+// db: Connection pool
+// Returns: *UploadRepository
+//
+// Methods:
+//
+//   - Create: Stores new upload metadata
+//     Returns ID via INSERT...RETURNING
+//
+//   - ListByUserID: Paginated uploads listing
+//     Includes total count for pagination
+//     Returns: (*entities.Uploads, *dto.Pagination, error)
+//
+//   - GetByUUID: Retrieves by UUID with owner check
+//     Returns ErrFileNotFound for missing records
+//
+//   - GetByName: Retrieves by filename with owner check
+//     Returns ErrFileNotFound for missing records
+//
+//   - Delete: Soft-deletes record (sets deleted flag)
+//
+//   - DeleteForce: Permanent deletion (admin operation)
+//     Both enforce owner validation
+//
+// Implements: appUpload.UploadRepository interface
 func NewUploadRepository(db *pgxpool.Pool) *UploadRepository {
 	return &UploadRepository{
 		db:  db,
@@ -70,9 +104,15 @@ func (r *UploadRepository) Create(
 
 // List returns all URL mappings for the current user from the database.
 // Returns an unauthorized error if no user ID is present in context.
-func (r *UploadRepository) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Uploads, *dto.Pagination, error) {
+func (r *UploadRepository) ListByUserID(ctx context.Context, userID int64, offset, limit int, params map[string]any) (*entities.Uploads, *dto.Pagination, error) {
 
-	rows, err := r.db.Query(ctx, queryUploadSelectByUserID, userID, offset, limit)
+	whereClause, whereParams := sql.BuildWhere(params, "AND", 3)
+	allParams := []any{offset, limit}
+	allParams = append(allParams, whereParams...)
+
+	query := strings.Replace(queryUploadSelectByUserID, "%WHERE%", "WHERE "+whereClause, 1)
+
+	rows, err := r.db.Query(ctx, query, allParams...)
 	if err != nil {
 		r.log.Debug().Err(err).Msg("ListByUserID1")
 		return nil, nil, err
@@ -129,8 +169,12 @@ func (r *UploadRepository) ListByUserID(ctx context.Context, userID int64, offse
 		return nil, nil, fmt.Errorf("error after iterating upload rows: %w", err)
 	}
 
+	// Totals
+	whereClause, whereParams = sql.BuildWhere(params, "AND", 1)
+	query = strings.Replace(queryUploadSelectByUserIDTotal, "%WHERE%", "WHERE "+whereClause, 1)
+
 	var total int
-	err = r.db.QueryRow(ctx, queryUploadSelectByUserIDTotal, userID).Scan(&total)
+	err = r.db.QueryRow(ctx, query, whereParams...).Scan(&total)
 
 	if err != nil {
 		r.log.Debug().Err(err).Msg("GetTotals")

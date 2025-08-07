@@ -3,7 +3,6 @@ package handlers_image
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -29,8 +28,8 @@ type ImageService interface {
 	DeleteForce(ctx context.Context, uuid string, userID int64) error
 	GetByName(ctx context.Context, name string, userID int64) (*entities.Image, error)
 	GetByUUID(ctx context.Context, uuid string, userID int64) (*entities.Image, error)
-	ListByUserID(ctx context.Context, userID int64, offset int, limit int) (*entities.Images, *dto.Pagination, error)
-	RegisterImageedFile(ctx context.Context, userID int64, file *entities.File, name string, category string, contentType string, description string) (*entities.Image, error)
+	ListByUserID(ctx context.Context, userID int64, offset int, limit int, params map[string]any) (*entities.Images, *dto.Pagination, error)
+	RegisterUploadedImage(ctx context.Context, userID int64, file *entities.File, name string, category string, contentType string, description string) (*entities.Image, error)
 }
 
 type ImageHandler interface {
@@ -40,7 +39,20 @@ type ImageHandler interface {
 	ImageFile(c *gin.Context)
 }
 
-// Этот Handler обрабатывает HTTP запросы для работы с файлами
+// SavedFile implements structure for saved file results.
+// File: FileService.Upload operation result.
+// Filename: Data from fileHeader.Filename.
+// ContentType: Content-Type uploaded file.
+type SavedFile struct {
+	File        *entities.File
+	Filename    string
+	ContentType string
+}
+
+// Handler implements UploadHandler for handling file-related HTTP requests.
+// FileService: Service for file storage operations.
+// ImageService: Service for upload metadata operations.
+// log: Logger instance for the handler.
 type Handler struct {
 	FileService  FileService
 	ImageService ImageService
@@ -58,63 +70,24 @@ func NewImageHandler(FileService FileService, ImageService ImageService) *Handle
 
 // UploadImage обрабатывает загрузку файла
 func (h *Handler) UploadImage(c *gin.Context) {
-	uID, exists := c.Get("userID")
-	if !exists {
-		h.log.Debug().Msg("GetProfile not exists")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	userID, ok := uID.(int64)
-	if !ok {
-		h.log.Debug().Msg("GetProfile not ok")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
-		return
-	}
-
+	userID := c.GetInt("userID")
 	description := c.PostForm("description")
 	category := c.PostForm("category")
 
-	fileHeader, err := c.FormFile("file")
+	savedFile, err := h.saveFile(c, "file", userID)
 	if err != nil {
-		h.log.Debug().Err(err).Msg("ImageFile1")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file"})
 		return
 	}
 
-	err = h.cleanupBeforeCreate(c.Request.Context(), fileHeader.Filename, userID)
-	if err != nil {
-		h.log.Debug().Err(err).Msg("ImageFile2")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file"})
-		return
-	}
-
-	uploadingFile, err := fileHeader.Open()
-	if err != nil {
-		h.log.Debug().Err(err).Msg("ImageFile3")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file"})
-		return
-	}
-	defer uploadingFile.Close()
-
-	file, err := h.FileService.Upload(
+	upload, err := h.ImageService.RegisterUploadedImage(
 		c.Request.Context(),
-		fileHeader.Size,
-		uploadingFile,
-	)
-	if err != nil {
-		h.log.Debug().Err(err).Msg("ImageFile4")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload file"})
-		return
-	}
-
-	upload, err := h.ImageService.RegisterImageedFile(
-		c.Request.Context(),
-		userID,
-		file,
-		fileHeader.Filename,
+		int64(userID),
+		savedFile.File,
+		savedFile.Filename,
 		category,
-		fileHeader.Header.Get("Content-Type"),
+		savedFile.ContentType,
 		description,
 	)
 	if err != nil {
@@ -126,45 +99,12 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	c.JSON(http.StatusCreated, dto.NewImageResponse(upload))
 }
 
+// DownloadFile handles file download requests.
+// Supports lookup by UUID or filename and enforces user ownership.
 func (h *Handler) DownloadFile(c *gin.Context) {
-	uID, exists := c.Get("userID")
-	if !exists {
-		h.log.Debug().Msg("GetProfile not exists")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	userID, ok := uID.(int64)
-	if !ok {
-		h.log.Debug().Msg("GetProfile not ok")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
-		return
-	}
-
-	UUID := c.Query("uuid")
-	name := c.Query("name")
-
-	if UUID == "" && name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID or Name is required"})
-		return
-	}
-
-	var upload *entities.Image
-	var err error
-
-	if UUID != "" {
-		upload, err = h.ImageService.GetByUUID(c.Request.Context(), UUID, userID)
-	} else {
-		upload, err = h.ImageService.GetByName(c.Request.Context(), name, userID)
-	}
-	fmt.Println(upload)
+	upload, err := h.getUpload(c)
 	if err != nil {
-		if errors.Is(err, appImage.ErrFileNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "File not found in DB"})
-			return
-		}
-		h.log.Debug().Err(err).Msg("DownloadFile1")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file"})
 		return
 	}
 
@@ -192,25 +132,21 @@ func (h *Handler) DownloadFile(c *gin.Context) {
 	})
 }
 
+// ListFiles retrieves a paginated list of files uploaded by the user.
+// Uses PaginationMiddleware for offset/limit handling.
 func (h *Handler) ListFiles(c *gin.Context) {
-	uID, exists := c.Get("userID")
-	if !exists {
-		h.log.Debug().Msg("GetProfile not exists")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	userID, ok := uID.(int64)
-	if !ok {
-		h.log.Debug().Msg("GetProfile not ok")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
-		return
-	}
-
+	userID := c.GetInt("userID")
 	offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
 
-	uploads, pagination, err := h.ImageService.ListByUserID(c.Request.Context(), userID, offset, limit)
+	params := make(map[string]any)
+	if c.Query("updated_at") != "" {
+		params["updated_at >="] = c.Query("updated_at")
+	}
+	params["deleted"] = "false"
+
+	uploads, pagination, err := h.ImageService.ListByUserID(c.Request.Context(), int64(userID), offset, limit, params)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("ListFiles")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list files"})
@@ -229,26 +165,15 @@ func (h *Handler) ListFiles(c *gin.Context) {
 }
 
 func (h *Handler) DeleteFile(c *gin.Context) {
-	uID, exists := c.Get("userID")
-	if !exists {
-		h.log.Debug().Msg("GetProfile not exists")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	userID, ok := uID.(int64)
-	if !ok {
-		h.log.Debug().Msg("GetProfile not ok")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
-		return
-	}
-
+	userID := c.GetInt("userID")
 	UUID := c.Query("uuid")
+
 	if UUID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID is required"})
 		return
 	}
-	if err := h.ImageService.Delete(c.Request.Context(), UUID, userID); err != nil {
+	if err := h.ImageService.Delete(c.Request.Context(), UUID, int64(userID)); err != nil {
 		h.log.Debug().Err(err).Msg("DeleteFile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID is can't be deleted"})
 		return
@@ -283,4 +208,77 @@ func (h *Handler) cleanupBeforeCreate(ctx context.Context, name string, userID i
 	}
 
 	return nil
+}
+
+// saveFile write file to FS via FileService.Upload.
+func (h *Handler) saveFile(c *gin.Context, fieldName string, userID int) (*SavedFile, error) {
+
+	fileHeader, err := c.FormFile(fieldName)
+	if err != nil {
+		h.log.Debug().Err(err).Msg("saveFile1")
+		return nil, err
+	}
+
+	err = h.cleanupBeforeCreate(c.Request.Context(), fileHeader.Filename, int64(userID))
+	if err != nil {
+		h.log.Debug().Err(err).Msg("saveFile2")
+		return nil, err
+	}
+
+	uploadingFile, err := fileHeader.Open()
+	if err != nil {
+		h.log.Debug().Err(err).Msg("saveFile3")
+		return nil, err
+	}
+	defer uploadingFile.Close()
+
+	file, err := h.FileService.Upload(
+		c.Request.Context(),
+		fileHeader.Size,
+		uploadingFile,
+	)
+	if err != nil {
+		h.log.Debug().Err(err).Msg("saveFile4")
+		return nil, err
+	}
+
+	return &SavedFile{
+		file,
+		fileHeader.Filename,
+		fileHeader.Header.Get("Content-Type"),
+	}, nil
+}
+
+// getUpload return data from uploads table DB by uuid or filename.
+func (h *Handler) getUpload(c *gin.Context) (*entities.Image, error) {
+
+	userID := c.GetInt("userID")
+	UUID := c.Query("uuid")
+	name := c.Query("name")
+
+	if UUID == "" && name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID or Name is required"})
+		return nil, errors.New("bad request")
+	}
+
+	var upload *entities.Image
+	var err error
+
+	if UUID != "" {
+		upload, err = h.ImageService.GetByUUID(c.Request.Context(), UUID, int64(userID))
+	} else {
+		upload, err = h.ImageService.GetByName(c.Request.Context(), name, int64(userID))
+	}
+
+	if err != nil {
+		if errors.Is(err, appImage.ErrFileNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "File not found in DB"})
+			return nil, err
+		}
+		h.log.Debug().Err(err).Msg("DownloadFile1")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file"})
+		return nil, err
+	}
+
+	return upload, err
 }

@@ -86,7 +86,7 @@ func (m *MockUploadService) GetByName(ctx context.Context, name string, userID i
 	return args.Get(0).(*entities.Upload), args.Error(1)
 }
 
-func (m *MockUploadService) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Uploads, *dto.Pagination, error) {
+func (m *MockUploadService) ListByUserID(ctx context.Context, userID int64, offset, limit int, params map[string]any) (*entities.Uploads, *dto.Pagination, error) {
 	args := m.Called(ctx, userID, offset, limit)
 	return args.Get(0).(*entities.Uploads), args.Get(1).(*dto.Pagination), args.Error(2)
 }
@@ -161,7 +161,7 @@ func TestUploadHandler_UploadFile_Success(t *testing.T) {
 	// Create gin context with custom writer
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Set("userID", int64(1))
+	c.Set("userID", int(1))
 	c.Request = httptest.NewRequest("POST", "/upload", body)
 	c.Request.Header.Set("Content-Type", writer.FormDataContentType())
 
@@ -203,7 +203,7 @@ func TestUploadHandler_DownloadFile_Success(t *testing.T) {
 
 	// Create gin context with our custom writer
 	c, _ := gin.CreateTestContext(w)
-	c.Set("userID", int64(1))
+	c.Set("userID", int(1))
 	c.Request = httptest.NewRequest("GET", "/download?uuid="+uuid, nil)
 
 	// Execute
@@ -236,7 +236,7 @@ func TestUploadHandler_ListFiles_Success(t *testing.T) {
 	// Create test context
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Set("userID", int64(1))
+	c.Set("userID", int(1))
 	c.Set("offset", 0)
 	c.Set("limit", 10)
 	c.Request = httptest.NewRequest("GET", "/uploads", nil)
@@ -265,7 +265,7 @@ func TestUploadHandler_DeleteFile_Success(t *testing.T) {
 	// Create proper router for the test
 	router := gin.Default()
 	router.DELETE("/file", func(c *gin.Context) {
-		c.Set("userID", int64(1))
+		c.Set("userID", int(1))
 		handler.DeleteFile(c)
 	})
 

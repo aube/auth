@@ -1,3 +1,4 @@
+// Package user provides business logic for user account operations.
 package user
 
 import (
@@ -11,10 +12,19 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// UserService implements core user management functionality.
+// Handles registration, authentication, and account management.
+// Fields:
+//   - repo: Underlying user repository
+//   - log: Structured logger instance
 type UserService struct {
 	repo UserRepository
 	log  zerolog.Logger
 }
+
+// NewUserService creates a new UserService instance.
+// repo: User repository implementation
+// Returns: Configured *UserService
 
 func NewUserService(repo UserRepository) *UserService {
 	return &UserService{
@@ -23,6 +33,16 @@ func NewUserService(repo UserRepository) *UserService {
 	}
 }
 
+// Register handles new user registration:
+// 1. Validates username availability
+// 2. Hashes password securely
+// 3. Creates user entity
+// 4. Persists to repository
+// 5. Returns sanitized user response
+//
+// ctx: Context for cancellation/timeout
+// userDTO: Registration data
+// Returns: (*dto.UserResponse, error)
 func (s *UserService) Register(ctx context.Context, userDTO dto.RegisterRequest) (*dto.UserResponse, error) {
 
 	// Проверяем, существует ли пользователь
@@ -63,6 +83,14 @@ func (s *UserService) Register(ctx context.Context, userDTO dto.RegisterRequest)
 	return dto.NewUserResponse(user), nil
 }
 
+// Login authenticates existing users:
+// 1. Verifies username exists
+// 2. Validates password against stored hash
+// 3. Returns user profile on success
+//
+// ctx: Context for cancellation/timeout
+// userDTO: Login credentials
+// Returns: (*dto.UserResponse, error)
 func (s *UserService) Login(ctx context.Context, userDTO dto.LoginRequest) (*dto.UserResponse, error) {
 	user, err := s.repo.FindByUsername(ctx, userDTO.Username)
 	if err != nil {
@@ -79,6 +107,13 @@ func (s *UserService) Login(ctx context.Context, userDTO dto.LoginRequest) (*dto
 	return dto.NewUserResponse(user), nil
 }
 
+// GetUserByID retrieves user profile:
+// 1. Verifies user exists
+// 2. Returns sanitized profile data
+//
+// ctx: Context for cancellation/timeout
+// id: User identifier
+// Returns: (*dto.UserResponse, error)
 func (s *UserService) GetUserByID(ctx context.Context, id int64) (*dto.UserResponse, error) {
 	user, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -89,6 +124,13 @@ func (s *UserService) GetUserByID(ctx context.Context, id int64) (*dto.UserRespo
 	return dto.NewUserResponse(user), nil
 }
 
+// Delete removes user account:
+// 1. Verifies user exists
+// 2. Deletes from repository
+//
+// ctx: Context for cancellation/timeout
+// id: User identifier
+// Returns: error on failure
 func (s *UserService) Delete(ctx context.Context, id int64) error {
 	err := s.repo.Delete(ctx, id)
 	if err != nil {

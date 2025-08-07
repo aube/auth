@@ -1,3 +1,4 @@
+// Package valueobjects contains domain primitives that enforce business rules.
 package valueobjects
 
 import (
@@ -7,12 +8,20 @@ import (
 	"strings"
 )
 
-// Email represents a validated email address value object
+// Email represents a validated email address value object.
+// Implements proper encapsulation and validation of email addresses.
 type Email struct {
 	value string
 }
 
-// NewEmail creates a new Email value object after validation
+// NewEmail creates a validated Email instance.
+// value: Candidate email address
+// Returns: (Email, error)
+// Validation:
+//   - Requires 3-254 characters
+//   - Valid format per RFC 5322
+//   - Normalizes to lowercase
+//   - Trims whitespace
 func NewEmail(value string) (Email, error) {
 	if !isValidEmail(value) {
 		return Email{}, errors.New("invalid email address")
@@ -23,7 +32,6 @@ func NewEmail(value string) (Email, error) {
 	}, nil
 }
 
-// isValidEmail checks if the email address is valid
 func isValidEmail(email string) bool {
 	// Basic length check
 	if len(email) < 3 || len(email) > 254 {
@@ -34,17 +42,21 @@ func isValidEmail(email string) bool {
 	return err == nil
 }
 
-// String returns the string representation of the email
+// String returns the normalized email string.
+// Implements fmt.Stringer interface.
 func (e Email) String() string {
 	return e.value
 }
 
-// Equals checks if two Email objects are equal
+// Equals compares two Email objects for value equality.
+// other: Email to compare
+// Returns: bool indicating equality
 func (e Email) Equals(other Email) bool {
 	return e.value == other.value
 }
 
-// LocalPart returns the local part of the email (before @)
+// LocalPart extracts the username portion (before @).
+// Returns: string - empty if malformed
 func (e Email) LocalPart() string {
 	parts := strings.Split(e.value, "@")
 	if len(parts) > 0 {
@@ -53,7 +65,8 @@ func (e Email) LocalPart() string {
 	return ""
 }
 
-// Domain returns the domain part of the email (after @)
+// Domain extracts the domain portion (after @).
+// Returns: string - empty if malformed
 func (e Email) Domain() string {
 	parts := strings.Split(e.value, "@")
 	if len(parts) > 1 {
@@ -62,12 +75,15 @@ func (e Email) Domain() string {
 	return ""
 }
 
-// MarshalText implements the encoding.TextMarshaler interface
+// MarshalText implements encoding.TextMarshaler for serialization.
+// Returns: ([]byte, error) - UTF-8 encoded email
 func (e Email) MarshalText() ([]byte, error) {
 	return []byte(e.value), nil
 }
 
-// UnmarshalText implements the encoding.TextUnmarshaler interface
+// UnmarshalText implements encoding.TextUnmarshaler for deserialization.
+// text: Input byte slice
+// Returns: error if validation fails
 func (e *Email) UnmarshalText(text []byte) error {
 	tmp, err := NewEmail(string(text))
 	if err != nil {
@@ -77,17 +93,22 @@ func (e *Email) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// Value returns the underlying string value
+// Value returns the underlying string value.
+// Returns: string - normalized email
 func (e Email) Value() string {
 	return e.value
 }
 
-// IsZero checks if the email is zero value
+// IsZero checks for uninitialized state.
+// Returns: bool - true if empty
 func (e Email) IsZero() bool {
 	return e.value == ""
 }
 
-// Format implements fmt.Formatter interface
+// Format implements custom formatting for fmt package.
+// Supports:
+//   - %v: Basic string output
+//   - %+v: Debug format with type information
 func (e Email) Format(f fmt.State, verb rune) {
 	switch verb {
 	case 'v':
