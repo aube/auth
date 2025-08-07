@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/aube/auth/internal/application/dto"
+	"github.com/aube/auth/internal/domain/entities"
 	"github.com/aube/auth/internal/utils/logger"
 	"github.com/rs/zerolog"
 
@@ -13,12 +14,14 @@ import (
 )
 
 type PageService interface {
-	Create(ctx context.Context, pageDTO dto.CreatePageRequest) (*dto.PageResponse, error)
-	Update(ctx context.Context, pageDTO dto.UpdatePageRequest) (*dto.PageResponse, error)
-	GetByID(ctx context.Context, id int64) (*dto.PageResponse, error)
-	GetByName(ctx context.Context, name string) (*dto.PageResponse, error)
 	Delete(ctx context.Context, id int64) error
 	DeleteForce(ctx context.Context, id int64) error
+
+	Create(ctx context.Context, pageDTO dto.CreatePageRequest) (*entities.PageWithTime, error)
+	Update(ctx context.Context, pageDTO dto.UpdatePageRequest) (*entities.PageWithTime, error)
+	GetByName(ctx context.Context, name string) (*entities.PageWithTime, error)
+	GetByID(ctx context.Context, id int64) (*entities.PageWithTime, error)
+	ListPages(ctx context.Context, offset int, limit int, params map[string]any) (*entities.PagesWithTimes, *dto.Pagination, error)
 }
 
 type PageHandler interface {
@@ -26,6 +29,7 @@ type PageHandler interface {
 	Update(c *gin.Context)
 	Delete(c *gin.Context)
 	GetByParam(c *gin.Context)
+	ListPages(c *gin.Context)
 }
 
 type Handler struct {
@@ -81,7 +85,7 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, createdUser)
+	c.JSON(http.StatusOK, createdUser)
 }
 
 func (h *Handler) GetByParam(c *gin.Context) {
@@ -141,6 +145,35 @@ func (h *Handler) GetByName(c *gin.Context) {
 	h.log.Debug().Msg(page.Name)
 
 	c.JSON(http.StatusOK, page)
+}
+
+func (h *Handler) ListPages(c *gin.Context) {
+
+	offset := c.GetInt("offset")
+	limit := c.GetInt("limit")
+
+	params := make(map[string]any)
+	if c.Query("updated_at") != "" {
+		params["updated_at >="] = c.Query("updated_at")
+	}
+	params["deleted"] = "false"
+
+	pages, pagination, err := h.pageService.ListPages(c.Request.Context(), offset, limit, params)
+	if err != nil {
+		h.log.Debug().Err(err).Msg("ListFiles")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list files"})
+		return
+	}
+
+	rows := make([]dto.PageResponse, len(*pages))
+	for i, page := range *pages {
+		rows[i] = *dto.NewPageResponse(&page)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"rows":       rows,
+		"pagination": pagination,
+	})
 }
 
 func (h *Handler) Delete(c *gin.Context) {

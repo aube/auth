@@ -17,9 +17,14 @@ func SetupPageRouter(
 
 	// Защищённые маршруты
 	authApi := api.Group("/")
+	authApi.GET("/page", pageHandler.GetByParam)
+	authApi.Use(middlewares.PaginationMiddleware())
+	{
+		authApi.GET("/pages", pageHandler.ListPages)
+	}
+
 	authApi.Use(middlewares.AuthMiddleware(jwtSecret))
 	{
-		authApi.GET("/page", pageHandler.GetByParam)
 		authApi.POST("/page", pageHandler.Create)
 		authApi.PUT("/page", pageHandler.Update)
 		authApi.DELETE("/page", pageHandler.Delete)

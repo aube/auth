@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/aube/auth/internal/domain/entities"
+import (
+	"time"
+
+	"github.com/aube/auth/internal/domain/entities"
+)
 
 type CreatePageRequest struct {
 	Name         string `json:"name"`
@@ -26,18 +30,20 @@ type UpdatePageRequest struct {
 }
 
 type PageResponse struct {
-	ID           int64  `json:"id"`
-	Name         string `json:"name"`
-	Meta         string `json:"meta"`
-	Title        string `json:"title"`
-	Category     string `json:"category"`
-	Template     string `json:"template"`
-	H1           string `json:"h1"`
-	Content      string `json:"content"`
-	ContentShort string `json:"content_short"`
+	ID           int64     `json:"id"`
+	Name         string    `json:"name"`
+	Meta         string    `json:"meta"`
+	Title        string    `json:"title"`
+	Category     string    `json:"category"`
+	Template     string    `json:"template"`
+	H1           string    `json:"h1"`
+	Content      string    `json:"content"`
+	ContentShort string    `json:"content_short"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-func NewPageResponse(page *entities.Page) *PageResponse {
+func NewPageResponse(page *entities.PageWithTime) *PageResponse {
 	return &PageResponse{
 		ID:           page.ID,
 		Name:         page.Name,
@@ -48,5 +54,7 @@ func NewPageResponse(page *entities.Page) *PageResponse {
 		H1:           page.H1,
 		Content:      page.Content,
 		ContentShort: page.ContentShort,
+		CreatedAt:    page.CreatedAt,
+		UpdatedAt:    page.UpdatedAt,
 	}
 }

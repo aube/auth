@@ -3,6 +3,7 @@ package page
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	"github.com/aube/auth/internal/application/dto"
 	"github.com/aube/auth/internal/domain/entities"
@@ -22,9 +23,9 @@ func NewPageService(repo PageRepository) *PageService {
 	}
 }
 
-func (s *PageService) Create(ctx context.Context, pageDTO dto.CreatePageRequest) (*dto.PageResponse, error) {
+func (s *PageService) Create(ctx context.Context, pageDTO dto.CreatePageRequest) (*entities.PageWithTime, error) {
 	// Проверяем, существует ли страница с таким именем
-	id, err := s.repo.ExistsID(ctx, pageDTO.Name)
+	id, err := s.repo.GetIDByName(ctx, pageDTO.Name)
 	if err != nil {
 		s.log.Debug().Err(err).Msg("Create1")
 		return nil, err
@@ -56,18 +57,26 @@ func (s *PageService) Create(ctx context.Context, pageDTO dto.CreatePageRequest)
 		return nil, err
 	}
 
-	return dto.NewPageResponse(page), nil
+	// Получаем сохранённый результат
+	createdPage, err := s.repo.FindByID(ctx, page.ID)
+	if err != nil {
+		s.log.Debug().Err(err).Msg("Update4")
+		return nil, err
+	}
+
+	s.log.Debug().Msg("CREATE page: " + strconv.Itoa(int(page.ID)) + ", " + pageDTO.Name)
+	return createdPage, nil
 }
 
-func (s *PageService) Update(ctx context.Context, pageDTO dto.UpdatePageRequest) (*dto.PageResponse, error) {
+func (s *PageService) Update(ctx context.Context, pageDTO dto.UpdatePageRequest) (*entities.PageWithTime, error) {
 
 	// Проверяем, существует ли другая страница с таким именем
-	id, err := s.repo.ExistsID(ctx, pageDTO.Name)
+	id, err := s.repo.GetIDByName(ctx, pageDTO.Name)
 	if err != nil {
 		s.log.Debug().Err(err).Msg("Update1")
 		return nil, err
 	}
-	if id != pageDTO.ID {
+	if id > 0 && id != pageDTO.ID {
 		return nil, errors.New("page with name " + pageDTO.Name + " already exists")
 	}
 
@@ -93,32 +102,36 @@ func (s *PageService) Update(ctx context.Context, pageDTO dto.UpdatePageRequest)
 		return nil, err
 	}
 	// Получаем сохранённый результат
-	page, err = s.repo.FindByID(ctx, pageDTO.ID)
+	updatedPage, err := s.repo.FindByID(ctx, pageDTO.ID)
 	if err != nil {
 		s.log.Debug().Err(err).Msg("Update4")
 		return nil, err
 	}
 
-	return dto.NewPageResponse(page), nil
+	s.log.Debug().Msg("UPDATE page: " + strconv.Itoa(int(pageDTO.ID)) + ", " + pageDTO.Name)
+	return updatedPage, nil
 }
 
-func (s *PageService) GetByID(ctx context.Context, id int64) (*dto.PageResponse, error) {
+func (s *PageService) GetByID(ctx context.Context, id int64) (*entities.PageWithTime, error) {
 	page, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		s.log.Debug().Err(err).Msg("GetByID")
 		return nil, err
 	}
 
-	return dto.NewPageResponse(page), nil
+	return page, nil
 }
-func (s *PageService) GetByName(ctx context.Context, name string) (*dto.PageResponse, error) {
+func (s *PageService) GetByName(ctx context.Context, name string) (*entities.PageWithTime, error) {
 	page, err := s.repo.FindByName(ctx, name)
 	if err != nil {
 		s.log.Debug().Err(err).Msg("GetByName")
 		return nil, err
 	}
 
-	return dto.NewPageResponse(page), nil
+	return page, nil
+}
+func (s *PageService) ListPages(ctx context.Context, offset, limit int, params map[string]any) (*entities.PagesWithTimes, *dto.Pagination, error) {
+	return s.repo.ListPages(ctx, offset, limit, params)
 }
 
 func (s *PageService) Delete(ctx context.Context, id int64) error {
@@ -128,6 +141,7 @@ func (s *PageService) Delete(ctx context.Context, id int64) error {
 		return err
 	}
 
+	s.log.Debug().Msg("DELETE page: " + strconv.Itoa(int(id)))
 	return nil
 }
 
@@ -137,6 +151,6 @@ func (s *PageService) DeleteForce(ctx context.Context, id int64) error {
 		s.log.Debug().Err(err).Msg("Delete")
 		return err
 	}
-
+	s.log.Debug().Msg("DELETE! page: " + strconv.Itoa(int(id)))
 	return nil
 }
