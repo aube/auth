@@ -1,3 +1,4 @@
+// Package fs provides filesystem-based storage implementation for files.
 package fs
 
 import (
@@ -13,14 +14,47 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// FileSystemRepository реализация FileRepository для хранения файлов в файловой системе
+// FileSystemRepository implements FileRepository interface for local filesystem storage.
+// Features:
+//   - Thread-safe operations with sync.RWMutex
+//   - Atomic file writes
+//   - Directory isolation
+//   - Error logging
 type FileSystemRepository struct {
 	storagePath string
 	mu          sync.RWMutex
 	log         zerolog.Logger
 }
 
-// NewFileSystemRepository создает новый экземпляр FileSystemRepository
+// NewFileSystemRepository initializes a new filesystem repository.
+// storagePath: Root directory for file storage
+// Returns: (*FileSystemRepository, error)
+// Creates storage directory if missing (0755 permissions)
+//
+// Methods:
+//
+//   - Save: Stores file content atomically
+//     ctx: Context for cancellation
+//     file: Metadata entity
+//     data: Content stream
+//     Returns: error on failure
+//
+//   - FindAll: Lists all stored files
+//     ctx: Context for cancellation
+//     Returns: (*entities.Files, error)
+//     Note: Skips directories, includes file metadata
+//
+//   - Delete: Removes file by UUID
+//     ctx: Context for cancellation
+//     uuid: File identifier
+//     Returns: error (converts os.ErrNotExist to ErrFileNotFound)
+//
+//   - GetFileContent: Retrieves file as stream
+//     ctx: Context for cancellation
+//     uuid: File identifier
+//     Returns: (io.ReadCloser, error)
+//     Caller must close the stream
+//     Converts os.ErrNotExist to ErrFileNotFound
 func NewFileSystemRepository(storagePath string) (*FileSystemRepository, error) {
 	if err := os.MkdirAll(storagePath, 0755); err != nil {
 		return nil, err

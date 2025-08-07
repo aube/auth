@@ -17,8 +17,8 @@ func (m *UploadRepository) Create(ctx context.Context, userID int64, upload *ent
 	return args.Error(0)
 }
 
-func (m *UploadRepository) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Uploads, *dto.Pagination, error) {
-	args := m.Called(ctx, userID, offset, limit)
+func (m *UploadRepository) ListByUserID(ctx context.Context, userID int64, offset, limit int, params map[string]any) (*entities.Uploads, *dto.Pagination, error) {
+	args := m.Called(ctx, userID, offset, limit, params)
 	return args.Get(0).(*entities.Uploads), args.Get(1).(*dto.Pagination), args.Error(2)
 }
 

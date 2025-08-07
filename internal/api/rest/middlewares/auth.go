@@ -1,3 +1,4 @@
+// Package middlewares provides gin middleware.
 package middlewares
 
 import (
@@ -9,6 +10,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// AuthMiddleware validates JWT tokens and sets the userID in the request context.
+// jwtSecret: Secret key for token validation.
+// Returns: Gin middleware function.
+// Behavior:
+//   - Extracts the "Authorization" header.
+//   - Validates the JWT token and its claims.
+//   - Aborts with 401 if validation fails.
+//   - Sets the userID in the context for downstream handlers.
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// fmt.Println("DEBUG: Authenticated user ID:", 11)
@@ -46,7 +55,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 		userID := claims["sub"].(float64)
-		c.Set("userID", int64(userID))
+		c.Set("userID", int(userID))
 		fmt.Println("Authenticated user ID:", userID)
 		c.Next()
 	}

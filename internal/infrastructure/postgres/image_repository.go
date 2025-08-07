@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/aube/auth/internal/application/dto"
 	appUpload "github.com/aube/auth/internal/application/upload"
 	"github.com/aube/auth/internal/domain/entities"
 	"github.com/aube/auth/internal/utils/logger"
+	"github.com/aube/auth/internal/utils/sql"
 	"github.com/rs/zerolog"
 
 	"github.com/jackc/pgx/v5"
@@ -19,8 +21,8 @@ import (
 
 const (
 	queryImageInsert              string = "INSERT INTO images (user_id, uuid, size, name, category, content_type, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id"
-	queryImageSelectByUserID      string = "SELECT id, user_id, uuid, size, name, category, content_type, description, created_at FROM images WHERE user_id = $1 and deleted=false OFFSET $2 LIMIT $3"
-	queryImageSelectByUserIDTotal string = "SELECT count(*) total FROM images WHERE user_id = $1 and deleted=false"
+	queryImageSelectByUserID      string = "SELECT id, user_id, uuid, size, name, category, content_type, description, created_at FROM images %WHERE% OFFSET $1 LIMIT $2"
+	queryImageSelectByUserIDTotal string = "SELECT count(*) total FROM images %WHERE%"
 	queryImageGetByUUID           string = "SELECT id, user_id, size, name, category, content_type, description, created_at FROM images WHERE uuid = $1 and user_id=$2 and deleted=false"
 	queryImageGetByName           string = "SELECT id, user_id, uuid, size, category, content_type, description, created_at FROM images WHERE name = $1 and user_id=$2 and deleted=false"
 	queryImageDelete              string = "UPDATE images SET deleted=true WHERE uuid = $1 and user_id=$2"
@@ -70,9 +72,15 @@ func (r *ImageRepository) Create(
 
 // List returns all URL mappings for the current user from the database.
 // Returns an unauthorized error if no user ID is present in context.
-func (r *ImageRepository) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Images, *dto.Pagination, error) {
+func (r *ImageRepository) ListByUserID(ctx context.Context, userID int64, offset, limit int, params map[string]any) (*entities.Images, *dto.Pagination, error) {
 
-	rows, err := r.db.Query(ctx, queryImageSelectByUserID, userID, offset, limit)
+	whereClause, whereParams := sql.BuildWhere(params, "AND", 3)
+	allParams := []any{offset, limit}
+	allParams = append(allParams, whereParams...)
+
+	query := strings.Replace(queryImageSelectByUserID, "%WHERE%", "WHERE "+whereClause, 1)
+
+	rows, err := r.db.Query(ctx, query, allParams...)
 	if err != nil {
 		r.log.Debug().Err(err).Msg("ListByUserID1")
 		return nil, nil, err
@@ -129,8 +137,12 @@ func (r *ImageRepository) ListByUserID(ctx context.Context, userID int64, offset
 		return nil, nil, fmt.Errorf("error after iterating image rows: %w", err)
 	}
 
+	// Totals
+	whereClause, whereParams = sql.BuildWhere(params, "AND", 1)
+	query = strings.Replace(queryImageSelectByUserIDTotal, "%WHERE%", "WHERE "+whereClause, 1)
+
 	var total int
-	err = r.db.QueryRow(ctx, queryImageSelectByUserIDTotal, userID).Scan(&total)
+	err = r.db.QueryRow(ctx, query, whereParams...).Scan(&total)
 
 	if err != nil {
 		r.log.Debug().Err(err).Msg("GetTotals")

@@ -1,3 +1,4 @@
+// Package postgres implements UserRepository for PostgreSQL.
 package postgres
 
 import (
@@ -23,11 +24,40 @@ const (
 	queryUserDelete       string = "UPDATE users SET deleted=true WHERE id = $1"
 )
 
+// UserRepository provides PostgreSQL storage for user accounts.
+// Features:
+//   - Soft deletion support
+//   - Password hash storage
+//   - Atomic operations
+//   - Existence checking
 type UserRepository struct {
 	db  *pgxpool.Pool
 	log zerolog.Logger
 }
 
+// NewUserRepository creates a new PostgreSQL user repository.
+// db: Connection pool
+// Returns: *UserRepository
+//
+// Methods:
+//
+//   - Create: Stores new user with hashed password
+//     Returns ID via INSERT...RETURNING
+//
+//   - FindByUsername: Retrieves by username
+//     Includes password hash
+//     Returns ErrUserNotFound for missing users
+//
+//   - FindByID: Retrieves by primary key
+//     Excludes sensitive data
+//     Returns ErrUserNotFound for missing users
+//
+//   - Exists: Checks username availability
+//     Returns (bool, error)
+//
+//   - Delete: Soft-deletes user (sets deleted flag)
+//
+// Implements: appUser.UserRepository interface
 func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 	return &UserRepository{
 		db:  db,

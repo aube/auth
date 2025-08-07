@@ -1,3 +1,4 @@
+// Package handlers_user provides handlers for user authentication and profile management.
 package handlers_user
 
 import (
@@ -13,6 +14,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// UserService defines the interface for user operations (registration, login, profile management).
 type UserService interface {
 	Delete(ctx context.Context, id int64) error
 	GetUserByID(ctx context.Context, id int64) (*dto.UserResponse, error)
@@ -28,6 +30,10 @@ type UserHandler interface {
 	Register(c *gin.Context)
 }
 
+// Handler implements UserHandler for handling user-related HTTP requests.
+// userService: Service for user operations.
+// jwtSecret: Secret key for JWT token generation.
+// log: Logger instance for the handler.
 type Handler struct {
 	userService UserService
 	jwtSecret   []byte
@@ -42,6 +48,8 @@ func NewUserHandler(userService UserService, jwtSecret string) UserHandler {
 	}
 }
 
+// Register handles user registration requests.
+// Validates input and creates a new user account.
 func (h *Handler) Register(c *gin.Context) {
 	var req dto.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -63,12 +71,15 @@ func (h *Handler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, createdUser)
 }
 
+// Login handles user authentication requests.
+// Validates credentials and returns a JWT token on success.
 func (h *Handler) Logout(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "successfully logged out"})
 
 }
 
+// Logout handles user logout requests (placeholder for future token invalidation).
 func (h *Handler) Login(c *gin.Context) {
 
 	var req dto.LoginRequest
@@ -110,23 +121,13 @@ func (h *Handler) Login(c *gin.Context) {
 	})
 }
 
+// GetProfile retrieves the authenticated user's profile data.
 func (h *Handler) GetProfile(c *gin.Context) {
-	uID, exists := c.Get("userID")
-	if !exists {
-		h.log.Debug().Msg("GetProfile not exists")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	userID, ok := uID.(int64)
-	if !ok {
-		h.log.Debug().Msg("GetProfile not ok")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
-		return
-	}
+	userID := c.GetInt("userID")
 
 	ctx := c.Request.Context()
-	user, err := h.userService.GetUserByID(ctx, userID)
+	user, err := h.userService.GetUserByID(ctx, int64(userID))
 	if err != nil {
 		h.log.Debug().Err(err).Msg("GetProfile")
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
@@ -137,23 +138,14 @@ func (h *Handler) GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// Delete handles user account deletion requests.
+// Validates authentication before removing the account.
 func (h *Handler) Delete(c *gin.Context) {
-	uID, exists := c.Get("userID")
-	if !exists {
-		h.log.Debug().Msg("GetProfile not exists")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	userID, ok := uID.(int64)
-	if !ok {
-		h.log.Debug().Msg("GetProfile not ok")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
-		return
-	}
+	userID := c.GetInt("userID")
 
 	ctx := c.Request.Context()
-	err := h.userService.Delete(ctx, userID)
+	err := h.userService.Delete(ctx, int64(userID))
 	if err != nil {
 		h.log.Debug().Err(err).Msg("Delete")
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})

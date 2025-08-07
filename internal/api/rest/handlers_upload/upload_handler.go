@@ -1,9 +1,9 @@
+// Package handlers_upload provides handlers for file upload and management operations.
 package handlers_upload
 
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -18,18 +18,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// FileService defines the interface for file storage operations (upload, download, delete).
 type FileService interface {
 	Delete(ctx context.Context, id string) error
 	Download(ctx context.Context, uuid string) (io.ReadCloser, error)
 	Upload(ctx context.Context, size int64, data io.Reader) (*entities.File, error)
 }
 
+// UploadService defines the interface for upload metadata operations (CRUD and listing).
 type UploadService interface {
 	Delete(ctx context.Context, uuid string, userID int64) error
 	DeleteForce(ctx context.Context, uuid string, userID int64) error
 	GetByName(ctx context.Context, name string, userID int64) (*entities.Upload, error)
 	GetByUUID(ctx context.Context, uuid string, userID int64) (*entities.Upload, error)
-	ListByUserID(ctx context.Context, userID int64, offset int, limit int) (*entities.Uploads, *dto.Pagination, error)
+	ListByUserID(ctx context.Context, userID int64, offset int, limit int, params map[string]any) (*entities.Uploads, *dto.Pagination, error)
 	RegisterUploadedFile(ctx context.Context, userID int64, file *entities.File, name string, category string, contentType string, description string) (*entities.Upload, error)
 }
 
@@ -40,7 +42,20 @@ type UploadHandler interface {
 	UploadFile(c *gin.Context)
 }
 
-// Этот Handler обрабатывает HTTP запросы для работы с файлами
+// SavedFile implements structure for saved file results.
+// File: FileService.Upload operation result.
+// Filename: Data from fileHeader.Filename.
+// ContentType: Content-Type uploaded file.
+type SavedFile struct {
+	File        *entities.File
+	Filename    string
+	ContentType string
+}
+
+// Handler implements UploadHandler for handling file-related HTTP requests.
+// FileService: Service for file storage operations.
+// UploadService: Service for upload metadata operations.
+// log: Logger instance for the handler.
 type Handler struct {
 	FileService   FileService
 	UploadService UploadService
@@ -56,65 +71,27 @@ func NewUploadHandler(FileService FileService, UploadService UploadService) *Han
 	}
 }
 
-// UploadFile обрабатывает загрузку файла
+// UploadFile handles file upload requests.
+// Validates user authentication, processes the file, and stores metadata.
 func (h *Handler) UploadFile(c *gin.Context) {
-	uID, exists := c.Get("userID")
-	if !exists {
-		h.log.Debug().Msg("GetProfile not exists")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	userID, ok := uID.(int64)
-	if !ok {
-		h.log.Debug().Msg("GetProfile not ok")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
-		return
-	}
-
+	userID := c.GetInt("userID")
 	description := c.PostForm("description")
 	category := c.PostForm("category")
 
-	fileHeader, err := c.FormFile("file")
+	savedFile, err := h.saveFile(c, "file", userID)
 	if err != nil {
-		h.log.Debug().Err(err).Msg("UploadFile1")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file"})
-		return
-	}
-
-	err = h.cleanupBeforeCreate(c.Request.Context(), fileHeader.Filename, userID)
-	if err != nil {
-		h.log.Debug().Err(err).Msg("UploadFile2")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file"})
-		return
-	}
-
-	uploadingFile, err := fileHeader.Open()
-	if err != nil {
-		h.log.Debug().Err(err).Msg("UploadFile3")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file"})
-		return
-	}
-	defer uploadingFile.Close()
-
-	file, err := h.FileService.Upload(
-		c.Request.Context(),
-		fileHeader.Size,
-		uploadingFile,
-	)
-	if err != nil {
-		h.log.Debug().Err(err).Msg("UploadFile4")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload file"})
 		return
 	}
 
 	upload, err := h.UploadService.RegisterUploadedFile(
 		c.Request.Context(),
-		userID,
-		file,
-		fileHeader.Filename,
+		int64(userID),
+		savedFile.File,
+		savedFile.Filename,
 		category,
-		fileHeader.Header.Get("Content-Type"),
+		savedFile.ContentType,
 		description,
 	)
 	if err != nil {
@@ -126,45 +103,12 @@ func (h *Handler) UploadFile(c *gin.Context) {
 	c.JSON(http.StatusCreated, dto.NewUploadResponse(upload))
 }
 
+// DownloadFile handles file download requests.
+// Supports lookup by UUID or filename and enforces user ownership.
 func (h *Handler) DownloadFile(c *gin.Context) {
-	uID, exists := c.Get("userID")
-	if !exists {
-		h.log.Debug().Msg("GetProfile not exists")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	userID, ok := uID.(int64)
-	if !ok {
-		h.log.Debug().Msg("GetProfile not ok")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
-		return
-	}
-
-	UUID := c.Query("uuid")
-	name := c.Query("name")
-
-	if UUID == "" && name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID or Name is required"})
-		return
-	}
-
-	var upload *entities.Upload
-	var err error
-
-	if UUID != "" {
-		upload, err = h.UploadService.GetByUUID(c.Request.Context(), UUID, userID)
-	} else {
-		upload, err = h.UploadService.GetByName(c.Request.Context(), name, userID)
-	}
-	fmt.Println(upload)
+	upload, err := h.getUpload(c)
 	if err != nil {
-		if errors.Is(err, appUpload.ErrFileNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "File not found in DB"})
-			return
-		}
-		h.log.Debug().Err(err).Msg("DownloadFile1")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file"})
 		return
 	}
 
@@ -192,25 +136,21 @@ func (h *Handler) DownloadFile(c *gin.Context) {
 	})
 }
 
+// ListFiles retrieves a paginated list of files uploaded by the user.
+// Uses PaginationMiddleware for offset/limit handling.
 func (h *Handler) ListFiles(c *gin.Context) {
-	uID, exists := c.Get("userID")
-	if !exists {
-		h.log.Debug().Msg("GetProfile not exists")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	userID, ok := uID.(int64)
-	if !ok {
-		h.log.Debug().Msg("GetProfile not ok")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
-		return
-	}
-
+	userID := c.GetInt("userID")
 	offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
 
-	uploads, pagination, err := h.UploadService.ListByUserID(c.Request.Context(), userID, offset, limit)
+	params := make(map[string]any)
+	if c.Query("updated_at") != "" {
+		params["updated_at >="] = c.Query("updated_at")
+	}
+	params["deleted"] = "false"
+
+	uploads, pagination, err := h.UploadService.ListByUserID(c.Request.Context(), int64(userID), offset, limit, params)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("ListFiles")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list files"})
@@ -228,27 +168,18 @@ func (h *Handler) ListFiles(c *gin.Context) {
 	})
 }
 
+// DeleteFile handles file deletion requests.
+// Validates user ownership before deleting both file and metadata.
 func (h *Handler) DeleteFile(c *gin.Context) {
-	uID, exists := c.Get("userID")
-	if !exists {
-		h.log.Debug().Msg("GetProfile not exists")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	userID, ok := uID.(int64)
-	if !ok {
-		h.log.Debug().Msg("GetProfile not ok")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized2"})
-		return
-	}
-
+	userID := c.GetInt("userID")
 	UUID := c.Query("uuid")
+
 	if UUID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID is required"})
 		return
 	}
-	if err := h.UploadService.Delete(c.Request.Context(), UUID, userID); err != nil {
+	if err := h.UploadService.Delete(c.Request.Context(), UUID, int64(userID)); err != nil {
 		h.log.Debug().Err(err).Msg("DeleteFile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID is can't be deleted"})
 		return
@@ -266,6 +197,7 @@ func (h *Handler) DeleteFile(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// cleanupBeforeCreate ensures no duplicate filenames exist for the user by cleaning up existing entries.
 func (h *Handler) cleanupBeforeCreate(ctx context.Context, name string, userID int64) error {
 
 	upload, err := h.UploadService.GetByName(ctx, name, userID)
@@ -283,4 +215,77 @@ func (h *Handler) cleanupBeforeCreate(ctx context.Context, name string, userID i
 	}
 
 	return nil
+}
+
+// saveFile write file to FS via FileService.Upload.
+func (h *Handler) saveFile(c *gin.Context, fieldName string, userID int) (*SavedFile, error) {
+
+	fileHeader, err := c.FormFile(fieldName)
+	if err != nil {
+		h.log.Debug().Err(err).Msg("saveFile1")
+		return nil, err
+	}
+
+	err = h.cleanupBeforeCreate(c.Request.Context(), fileHeader.Filename, int64(userID))
+	if err != nil {
+		h.log.Debug().Err(err).Msg("saveFile2")
+		return nil, err
+	}
+
+	uploadingFile, err := fileHeader.Open()
+	if err != nil {
+		h.log.Debug().Err(err).Msg("saveFile3")
+		return nil, err
+	}
+	defer uploadingFile.Close()
+
+	file, err := h.FileService.Upload(
+		c.Request.Context(),
+		fileHeader.Size,
+		uploadingFile,
+	)
+	if err != nil {
+		h.log.Debug().Err(err).Msg("saveFile4")
+		return nil, err
+	}
+
+	return &SavedFile{
+		file,
+		fileHeader.Filename,
+		fileHeader.Header.Get("Content-Type"),
+	}, nil
+}
+
+// getUpload return data from uploads table DB by uuid or filename.
+func (h *Handler) getUpload(c *gin.Context) (*entities.Upload, error) {
+
+	userID := c.GetInt("userID")
+	UUID := c.Query("uuid")
+	name := c.Query("name")
+
+	if UUID == "" && name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File UUID or Name is required"})
+		return nil, errors.New("bad request")
+	}
+
+	var upload *entities.Upload
+	var err error
+
+	if UUID != "" {
+		upload, err = h.UploadService.GetByUUID(c.Request.Context(), UUID, int64(userID))
+	} else {
+		upload, err = h.UploadService.GetByName(c.Request.Context(), name, int64(userID))
+	}
+
+	if err != nil {
+		if errors.Is(err, appUpload.ErrFileNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "File not found in DB"})
+			return nil, err
+		}
+		h.log.Debug().Err(err).Msg("DownloadFile1")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file"})
+		return nil, err
+	}
+
+	return upload, err
 }

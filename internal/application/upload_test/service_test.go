@@ -63,6 +63,7 @@ func TestUploadService_ListByUserID_Success(t *testing.T) {
 	userID := int64(1)
 	offset := 0
 	limit := 10
+	params := make(map[string]any)
 	expectedUploads := &entities.Uploads{
 		entities.Upload{UUID: "uuid1"},
 		entities.Upload{UUID: "uuid2"},
@@ -70,11 +71,11 @@ func TestUploadService_ListByUserID_Success(t *testing.T) {
 	expectedPagination := &dto.Pagination{Total: 2, Page: 1, Size: 10}
 
 	// Mock expectations
-	mockRepo.On("ListByUserID", mock.Anything, userID, offset, limit).
+	mockRepo.On("ListByUserID", mock.Anything, userID, offset, limit, params).
 		Return(expectedUploads, expectedPagination, nil)
 
 	// Execute
-	uploads, pagination, err := service.ListByUserID(context.Background(), userID, offset, limit)
+	uploads, pagination, err := service.ListByUserID(context.Background(), userID, offset, limit, params)
 
 	// Assert
 	require.NoError(t, err)

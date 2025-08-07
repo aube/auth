@@ -1,3 +1,4 @@
+// Package postgres provides PostgreSQL database connectivity.
 package postgres
 
 import (
@@ -9,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Config contains PostgreSQL connection parameters.
+// Fields: Host, Port, User, Password, DBName, SSLMode
 type Config struct {
 	Host     string
 	Port     string
@@ -18,6 +21,16 @@ type Config struct {
 	SSLMode  string
 }
 
+// NewPool creates a managed PostgreSQL connection pool.
+// ctx: Context for initialization
+// cfg: Connection configuration
+// Returns: (*pgxpool.Pool, error)
+// Features:
+//   - Connection pooling (10 max connections)
+//   - 1-hour max connection lifetime
+//   - Minute health checks
+//   - Automatic migrations on startup
+//   - Connection string validation
 func NewPool(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode)

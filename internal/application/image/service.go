@@ -22,7 +22,7 @@ func NewImageService(repo ImageRepository) *ImageService {
 	}
 }
 
-func (s *ImageService) RegisterImageedFile(
+func (s *ImageService) RegisterUploadedImage(
 	ctx context.Context,
 	userID int64,
 	file *entities.File,
@@ -43,8 +43,8 @@ func (s *ImageService) RegisterImageedFile(
 	return image, nil
 }
 
-func (s *ImageService) ListByUserID(ctx context.Context, userID int64, offset, limit int) (*entities.Images, *dto.Pagination, error) {
-	return s.repo.ListByUserID(ctx, userID, offset, limit)
+func (s *ImageService) ListByUserID(ctx context.Context, userID int64, offset, limit int, params map[string]any) (*entities.Images, *dto.Pagination, error) {
+	return s.repo.ListByUserID(ctx, userID, offset, limit, params)
 }
 
 func (s *ImageService) GetByUUID(ctx context.Context, uuid string, userID int64) (*entities.Image, error) {
