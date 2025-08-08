@@ -20,15 +20,17 @@ import (
 )
 
 const (
-	pageFields            string = "name, meta, title, category, template, h1, content, content_short, created_at, updated_at"
-	queryPageInsert       string = "INSERT INTO pages (" + pageFields + ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id"
+	pageFieldsInsert string = "name, meta, title, category, template, h1, content, content_short"
+	pageFieldsSelect string = "name, meta, title, category, template, h1, content, content_short, created_at, updated_at"
+
+	queryPageInsert       string = "INSERT INTO pages (" + pageFieldsInsert + ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id"
 	queryPageUpdate       string = "UPDATE pages SET name=$1, meta=$2, title=$3, category=$4, template=$5, h1=$6, content=$7, content_short=$8 WHERE id=$9"
-	queryPageSelectByName string = "SELECT id, " + pageFields + " FROM pages WHERE name = $1 and deleted = false"
-	queryPageSelectByID   string = "SELECT id, " + pageFields + " FROM pages WHERE id = $1 and deleted = false"
+	queryPageSelectByName string = "SELECT id, " + pageFieldsSelect + " FROM pages WHERE name = $1 and deleted = false"
+	queryPageSelectByID   string = "SELECT id, " + pageFieldsSelect + " FROM pages WHERE id = $1 and deleted = false"
 	queryPageGetIDByName  string = "SELECT id FROM pages WHERE name = $1"
 	queryPageDelete       string = "UPDATE pages SET deleted=true WHERE id = $1"
 	queryPageDeleteForce  string = "DELETE FROM pages WHERE id = $1"
-	queryPagesSelect      string = "SELECT id, " + pageFields + " FROM pages %WHERE% OFFSET $1 LIMIT $2"
+	queryPagesSelect      string = "SELECT id, " + pageFieldsSelect + " FROM pages %WHERE% OFFSET $1 LIMIT $2"
 	queryPagesSelectTotal string = "SELECT count(*) total FROM pages %WHERE%"
 )
 

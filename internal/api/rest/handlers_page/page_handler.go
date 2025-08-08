@@ -57,14 +57,14 @@ func (h *Handler) Create(c *gin.Context) {
 	ctx := c.Request.Context()
 	pageDTO := dto.CreatePageRequest(req)
 
-	createdUser, err := h.pageService.Create(ctx, pageDTO)
+	page, err := h.pageService.Create(ctx, pageDTO)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("Create2")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, createdUser)
+	c.JSON(http.StatusCreated, dto.NewPageResponse(page))
 }
 
 func (h *Handler) Update(c *gin.Context) {
@@ -78,14 +78,14 @@ func (h *Handler) Update(c *gin.Context) {
 	ctx := c.Request.Context()
 	pageDTO := dto.UpdatePageRequest(req)
 
-	createdUser, err := h.pageService.Update(ctx, pageDTO)
+	page, err := h.pageService.Update(ctx, pageDTO)
 	if err != nil {
 		h.log.Debug().Err(err).Msg("Update2")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, createdUser)
+	c.JSON(http.StatusOK, dto.NewPageResponse(page))
 }
 
 func (h *Handler) GetByParam(c *gin.Context) {
@@ -126,7 +126,7 @@ func (h *Handler) GetByID(c *gin.Context) {
 	}
 	h.log.Debug().Msg(page.Name)
 
-	c.JSON(http.StatusOK, page)
+	c.JSON(http.StatusOK, dto.NewPageResponse(page))
 }
 
 func (h *Handler) GetByName(c *gin.Context) {
@@ -144,7 +144,7 @@ func (h *Handler) GetByName(c *gin.Context) {
 	}
 	h.log.Debug().Msg(page.Name)
 
-	c.JSON(http.StatusOK, page)
+	c.JSON(http.StatusOK, dto.NewPageResponse(page))
 }
 
 func (h *Handler) ListPages(c *gin.Context) {
@@ -204,5 +204,5 @@ func (h *Handler) Delete(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.Status(http.StatusOK)
 }
